@@ -32,7 +32,7 @@ export async function GET(req) {
             );
         }
 
-        // Query the tasks table for tasks assigned to this user.
+        // Query the tasks table for tasks assigned to this user. and also fetch the notes entered by the user at
         const { data, error } = await supabase
             .from('tasks')
             .select('*, user:users(name)')

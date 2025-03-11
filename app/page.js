@@ -234,10 +234,10 @@ export default function HomePage() {
       {showLogoutPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 w-full max-w-sm mx-4 ">
-           
+
 
             <div className="text-center mb-5">
-           
+
               <h3 className="text-lg font-medium text-white">Are you sure you want to logout?</h3>
             </div>
 

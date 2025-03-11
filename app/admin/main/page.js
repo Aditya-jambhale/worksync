@@ -40,6 +40,7 @@ export default function AdminDashboard() {
                 .eq('adminId', adminId)
                 .order('createdat', { ascending: false });
 
+            
             if (error) throw error;
             setAdminTasks(data || []);
         } catch (error) {
@@ -103,6 +104,26 @@ export default function AdminDashboard() {
 
         fetchUsers();
     }, []);
+
+    // useEffect(() => {
+    //   const fetchShifts = async () => {
+    //     try {
+    //       const { shiftdata, error } = await supabase
+    //         .from('shifts')
+    //         .select('user_id, notes, status')
+    //         .eq('user_id')
+    //         .order('user_id'); // You can change the column to order by if needed.
+    //   console.log(shiftdata)
+    //       if (error) throw error;
+    //       // setShifts(data || []);
+    //     } catch (error) {
+    //       console.error('Error fetching shifts:', error);
+    //       showNotification('Failed to load shifts', 'error');
+    //     }
+    //   };
+    
+    //   fetchShifts();
+    // }, []);
 
 
     const confirmLogout = async () => {
