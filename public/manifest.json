@@ -1,0 +1,52 @@
+{
+  "name": "ScrollConnect WorkSpace",
+    "short_name": "ScrollConnect WorkSpace",
+    "description": "Manage allocations, shifts, and workspace operations efficiently.",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#FFFFFF",
+    "theme_color": "#FFFFFF",
+    "start_url": "/?source=pwa",
+    "id": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/icons/icon-256x256.png",
+      "type": "image/png",
+      "sizes": "256x256"
+    }
+  ],
+  
+    "splash_pages": null,
+    "display_override": ["standalone", "minimal-ui"],
+    "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+    },
+
+  "screenshots": [
+  {
+    "src": "/icons/Screenshot-desktop.png",
+    "sizes": "1920x1080",
+    "type": "image/png",
+    "form_factor": "wide"
+  },
+  {
+    "src": "/icons/Screenshot-mobile.png",
+    "sizes": "375x667",
+    "type": "image/png"
+  }
+]
+  
+  
+
+
+}

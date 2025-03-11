@@ -1,0 +1,86 @@
+export const metadata = {
+    metadataBase: new URL("https://workspace.scrollconnect.com"),
+    title: "WorkSpace",
+    description: "Manage allocations, shifts, and workspace operations efficiently.",
+    keywords: [
+        "campus events",
+        "university activities",
+        "student events",
+        "college events",
+        "campus social platform",
+        "student community",
+        "event management",
+    ],
+    authors: [{ name: "ScrollConnect" }],
+    creator: "ScrollConnect",
+    publisher: "ScrollConnect",
+    formatDetection: {
+        email: false,
+        address: false,
+        telephone: false,
+    },
+    manifest: "/manifest.json",
+    themeColor: "#ffffff",
+    viewport: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: "default",
+        title: "ScrollConnect",
+    },
+    openGraph: {
+        title: "ScrollConnect | Your Campus Events Hub",
+        description: "Your one-stop platform for discovering and managing campus events",
+        url: "https://scrollconnect.com",
+        siteName: "ScrollConnect",
+        images: [
+            {
+                url: "/og.png",
+                width: 1200,
+                height: 630,
+                alt: "ScrollConnect - Campus Events Platform",
+            },
+            {
+                url: "/og-square.png",
+                width: 600,
+                height: 600,
+                alt: "ScrollConnect - Campus Events Platform",
+            },
+        ],
+        locale: "en_US",
+        type: "website",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "ScrollConnect | Your Campus Events Hub",
+        description: "Discover and engage with campus events like never before",
+        images: ["/twitter-image.png"],
+        creator: "@scrollconnect",
+        site: "@scrollconnect",
+    },
+    icons: {
+        icon: [
+            { url: "/favicon.ico" },
+            { url: "/images/icon-192x192.png", sizes: "192x192", type: "image/png" },
+            { url: "//images/icon-512x512.png", sizes: "512x512", type: "image/png" },
+        ],
+        shortcut: "/favicon-16x16.png",
+        apple: [
+            { url: "/apple-touch-icon.png" },
+            { url: "/images/icon-192x192.png", sizes: "192x192", type: "image/png" },
+        ],
+        other: [
+            {
+                rel: "icon",
+                type: "image/png",
+                sizes: "32x32",
+                url: "/favicon-32x32.png",
+            },
+            {
+                rel: "icon",
+                type: "image/png",
+                sizes: "16x16",
+                url: "/favicon-16x16.png",
+            },
+        ],
+    },
+};
