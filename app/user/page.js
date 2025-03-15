@@ -57,7 +57,7 @@ export default function SigninPage() {
 
     // Function to open admin signin in a new window
     const openAdminSignin = () => {
-        window.open('/admin/signin', '_blank');
+        window.open('/admin/signin');
     };
 
     return (
