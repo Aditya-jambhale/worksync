@@ -6,260 +6,393 @@ import StartEndShiftComponent from './components/StartEndShiftComponent/StartEnd
 import CurrentShiftComponent from './components/CurrentShiftComponent/CurrentShiftComponent.js';
 import ShiftHistoryComponent from './components/ShiftHistoryComponent/ShiftHistoryComponent.js';
 import CompletedShiftDaysComponent from './components/CompletedShiftDaysComponent/CompletedShiftDaysComponent';
-import { LogOut } from 'lucide-react';
+import { 
+  LogOut, LayoutDashboard, CheckSquare, Clock, 
+  Settings, Bell, Search, Menu, X, ChevronLeft, 
+  ChevronRight, CreditCard, User, 
+  Zap, Calendar, BarChart3, HelpCircle, 
+  Shield, Globe, Terminal, UserSquare2, 
+  ToggleLeft, Lock, Trash2, Smartphone
+} from 'lucide-react';
 import TaskListComponent from './components/TaskListComponent/TaskListComponent.js';
 import Footer from './components/Footer/Footer.js';
+import Image from 'next/image';
 
 export default function HomePage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showLogoutPopup, setShowLogoutPopup] = useState(false);
-  const [workNotes, setWorkNotes] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutPopup, setShowLogoutPopup] = useState(false);
 
-  // Fetch user details and tasks on component mount
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
-        // Get user details from session using the cookie token
         const userResponse = await fetch('/api/users/me', {
-          headers: {
-            'Authorization': `Bearer ${Cookies.get('user_session_token')}`
-          }
+          headers: { 'Authorization': `Bearer ${Cookies.get('user_session_token')}` }
         });
-
-        if (!userResponse.ok) {
-          throw new Error('Failed to fetch user details');
-        }
-
+        if (!userResponse.ok) throw new Error('Unauthorized');
         const userData = await userResponse.json();
         setUser(userData.user);
 
-        // Fetch tasks for the user
-        const response = await fetch('/api/users/readtask/', {
-          method: 'GET',
-          credentials: 'include'
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch tasks');
+        const tasksResponse = await fetch('/api/users/readtask/', { credentials: 'include' });
+        if (tasksResponse.ok) {
+          const data = await tasksResponse.json();
+          setTasks(data.tasks || []);
         }
-
-        const data = await response.json();
-        setTasks(data.tasks);
       } catch (err) {
-        setError(err.message);
-        console.error('Error fetching data:', err);
+        router.push('/user');
       } finally {
         setLoading(false);
       }
     };
-
     fetchUserDetails();
-  }, []);
+  }, [router]);
 
-  const handleLogout = () => {
-    setShowLogoutPopup(true);
-  };
+  const handleLogout = () => setShowLogoutPopup(true);
 
   const confirmLogout = async () => {
-    try {
-      const res = await fetch('/api/users/signout', { method: 'POST' });
-      if (res.ok) {
-        router.push('/user');
-      } else {
-        console.error('Failed to sign out');
-      }
-    } catch (err) {
-      console.error('Error during logout:', err);
-    }
-  };
-
-  const closePopup = () => {
-    setShowLogoutPopup(false);
-    setWorkNotes('');
+    await fetch('/api/users/signout', { method: 'POST' });
+    router.push('/user');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white backdrop-blur-md bg-opacity-50">
-        <p className="text-lg  font-bold">
-          Loading your workspace...
-        </p>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+           <div className="w-10 h-10 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
+           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Loading Workspace</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
-        <p className="text-lg text-red-600">Error: {error}</p>
-        <button
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md"
-          onClick={() => router.push('/user')}
-        >
-          Return to Sign In
-        </button>
-      </div>
-    );
-  }
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'tasks', label: 'My Tasks', icon: CheckSquare, badge: tasks.length },
+    { id: 'analytics', label: 'Shift Logs', icon: Clock },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
+
+  const sidebarWidth = sidebarCollapsed ? 'md:w-[72px]' : 'md:w-64';
 
   return (
-    <div className="bg-white">
-      {/* Header */}
-      <header className="p-4 px-4 flex justify-between items-center w-full">
-        <div className="container mx-auto flex gap-2 items-center">
-
-          <div className="flex justify-between items-center">
-            <div className="flex flex-col">
-              <h1 className="text-lg font-medium text-black">
-                Hello {user?.name || 'User'}! 👋
-              </h1>
-              <p className="text-gray-600 text-sm">Welcome to your workspace!</p>
-            </div>
-
-          </div>
-        </div>
-        <button
-          className="text-gray-600 hover:text-red-600"
-          onClick={handleLogout}
-        >
-          <LogOut size={20} />
-        </button>
-      </header>
-
-      {/* Navigation Tabs */}
-      <div className="w-full mt-4">
-        <div className="flex justify-between items-center gap-2 px-4">
-          <button
-            className={`py-1.5 px-1 w-full ${activeTab === 'dashboard' ? 'border rounded-full bg-[#212529] text-white ' : 'text-gray-600 bg-gray-100 rounded-full'}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            Dashboard
-          </button>
-
-          <button
-            className={`py-1.5 px-1 w-full ${activeTab === 'tasks' ? 'border rounded-full bg-[#212529] text-white ' : 'text-gray-600 bg-gray-100 rounded-full'}`}
-            onClick={() => setActiveTab('tasks')}
-          >
-            Tasks
-          </button>
-          {/* <button
-            className={`py-3  px-2 ${activeTsab === 'shifts' ? 'border-b-2 border-blue-500 text-blue-600 font-medium' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('shifts')}
-          >
-            Shifts
-          </button> */}
-          <button
-            className={`py-1.5 px-1 w-full ${activeTab === 'history' ? 'border rounded-full bg-[#212529] text-white ' : 'text-gray-600 bg-gray-100 rounded-full'}`}
-            onClick={() => setActiveTab('history')}
-          >
-            History
-          </button>
-
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="container mx-auto p-4">
-        {activeTab === 'dashboard' && (
-          <>
-            {/* Search Bar
-            <div className="mb-6">
-              <div className="relative rounded-md text-black border border-gray-300 flex items-center">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                  </svg>
-                </div>
-                <input 
-                  type="text" 
-                  placeholder="Search Space" 
-                  className="block w-full pl-10 pr-3 py-3 border-none rounded-md focus:outline-none focus:ring-0"
-                />
-              </div>
-            </div> */}
-
-            <div className="flex flex-col gap-4">
-              <div className="w-full">
-                <StartEndShiftComponent />
-              </div>
-              <div className="w-full">
-                <CurrentShiftComponent />
-              </div>
-
-
-            </div>
-            <CompletedShiftDaysComponent />
-
-
-
-            {/* Task List */}
-
-          </>
-        )}
-
-
-
-        {activeTab === 'shifts' && (
-          <div className="bg-white ">
-            <div className="flex flex-col gap-4">
-              <div className="w-full">
-                <CurrentShiftComponent />
-              </div>
-              <div className="w-full">
-                <StartEndShiftComponent />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'tasks' && (
-          <div className="bg-white">
-            <TaskListComponent tasks={tasks} />
-          </div>
-        )}
-
-        {activeTab === 'history' && (
-          <div className="bg-white">
-            <ShiftHistoryComponent />
-          </div>
-        )}
-      </main>
-
-      {/* Logout Popup */}
-      {showLogoutPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-sm mx-4 ">
-
-
-            <div className="text-center mb-5">
-
-              <h3 className="text-lg font-medium text-white">Are you sure you want to logout?</h3>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                className="flex-1 py-2 border border-gray-300 rounded-md text-white font-medium hover:bg-gray-50"
-                onClick={closePopup}
-              >
-                Cancel
-              </button>
-              <button
-                className="flex-1 py-2 bg-blue-600  text-white rounded-md font-medium"
-                onClick={confirmLogout}
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-white flex flex-col md:flex-row text-slate-950 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
+      
+      {/* Mobile Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/20 backdrop-blur-sm z-[60] md:hidden transition-all duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
       )}
 
-      <Footer />
+      {/* Primary Sidebar Navigation */}
+      <aside 
+        className={`fixed left-0 top-0 h-full border-r border-slate-200 bg-white transition-all duration-300 z-[70] flex flex-col 
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+          md:translate-x-0 
+          ${sidebarWidth} 
+          w-64`}
+      >
+        {/* Logo Section */}
+        <div className="h-16 flex items-center justify-between px-4 shrink-0">
+           <div className={`flex items-center gap-3 transition-all duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:overflow-hidden' : 'opacity-100'}`}>
+              <div className="w-8 h-8 flex items-center justify-center bg-slate-950 rounded-lg shadow-sm">
+                 <Image src="/logo.png" alt="W" width={18} height={18} className="invert brightness-0" />
+              </div>
+              <span className="font-semibold tracking-tight text-sm">WorkSync</span>
+           </div>
+           <button 
+             onClick={() => {
+               if (window.innerWidth < 768) setIsMobileMenuOpen(false);
+               else setSidebarCollapsed(!sidebarCollapsed);
+             }}
+             className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
+           >
+             <div className="md:block hidden">
+                {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+             </div>
+             <div className="md:hidden">
+                <X size={18} />
+             </div>
+           </button>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+           {navItems.map((item) => (
+             <button
+               key={item.id}
+               onClick={() => {
+                  setActiveTab(item.id);
+                  if (window.innerWidth < 768) setIsMobileMenuOpen(false);
+               }}
+               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative group h-10 ${
+                 activeTab === item.id 
+                   ? 'bg-slate-100 text-slate-950 font-semibold' 
+                   : 'text-slate-500 hover:text-slate-950 hover:bg-slate-50 font-medium'
+               }`}
+             >
+               <item.icon size={18} className={`shrink-0 ${activeTab === item.id ? 'text-slate-950' : 'text-slate-400 group-hover:text-slate-950'}`} />
+               <span className={`text-sm transition-opacity duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:w-0' : 'opacity-100'}`}>
+                  {item.label}
+               </span>
+               {(!sidebarCollapsed || isMobileMenuOpen) && item.badge > 0 && (
+                 <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                   activeTab === item.id ? 'bg-slate-950 text-white' : 'bg-slate-200 text-slate-600'
+                 }`}>
+                   {item.badge}
+                 </span>
+               )}
+               {activeTab === item.id && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-slate-950 rounded-r-full" />
+               )}
+             </button>
+           ))}
+        </nav>
+
+        {/* Lower Sidebar */}
+        <div className="p-3 border-t border-slate-200 space-y-1 shrink-0">
+           <button 
+             onClick={handleLogout}
+             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all font-medium text-xs h-10"
+           >
+              <LogOut size={18} className="shrink-0" />
+              <span className={`transition-opacity duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:w-0' : 'opacity-100'}`}>Log out</span>
+           </button>
+           <div className={`mt-4 p-3 bg-slate-50 rounded-xl flex items-center gap-3 transition-all duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:overflow-hidden' : 'opacity-100'}`}>
+              <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                 {user?.name?.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                 <p className="text-xs font-semibold truncate text-slate-950">{user?.name}</p>
+                 <p className="text-[10px] text-slate-500 font-medium truncate italic">{user?.email}</p>
+              </div>
+           </div>
+        </div>
+      </aside>
+
+      {/* Main Panel Content */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 
+        ${sidebarCollapsed ? 'md:pl-[72px]' : 'md:pl-64'} 
+        w-full min-w-0 bg-[#fafafa]`}>
+        
+        {/* Header Ribbon */}
+        <header className="h-16 border-b border-slate-200 bg-white sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between gap-4">
+           <button 
+             onClick={() => setIsMobileMenuOpen(true)}
+             className="p-2 md:hidden hover:bg-slate-100 rounded-lg text-slate-600"
+           >
+             <Menu size={20} />
+           </button>
+
+           <div className="flex items-center gap-4 flex-1">
+              <div className="relative w-full max-w-sm hidden sm:block">
+                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 px-0" />
+                 <input 
+                   type="text" 
+                   placeholder="Search..." 
+                   className="w-full pl-9 pr-4 py-1.5 border border-slate-200 bg-slate-50 rounded-lg outline-none text-sm font-medium focus:bg-white focus:ring-1 focus:ring-slate-950 transition-all"
+                 />
+              </div>
+           </div>
+
+           <div className="flex items-center gap-2 md:gap-3">
+              <button className="p-2 text-slate-400 hover:text-slate-950 transition-all relative">
+                 <Bell size={18} />
+                 <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white"></div>
+              </button>
+              <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+              <div className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded-lg transition-all cursor-pointer">
+                 <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold">AJ</div>
+                 <ChevronDown size={14} className="text-slate-400" />
+              </div>
+           </div>
+        </header>
+
+        {/* View Content Rendering Area */}
+        <main className="flex-1 space-y-6 p-6 md:p-8 lg:p-10 max-w-7xl w-full mx-auto">
+           {/* Section Header */}
+           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                 <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
+                    {activeTab === 'dashboard' ? `Welcome back, ${user?.name?.split(' ')[0]}` : 
+                     activeTab === 'tasks' ? 'Active Tasks' : 
+                     activeTab === 'analytics' ? 'Shift History' : 
+                     'Settings'}
+                 </h1>
+                 <p className="text-sm text-slate-500 mt-1">
+                    {activeTab === 'dashboard' ? "Your operational metrics for today." : 
+                     activeTab === 'tasks' ? "Manage and prioritize your workplace assignments." :
+                     activeTab === 'analytics' ? "Detailed historical logs and telemetry." :
+                     "Manage your account and workspace preferences."}
+                 </p>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-sm font-medium text-slate-600">
+                 <Calendar size={14} className="text-slate-400 pt-0" />
+                 {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}
+              </div>
+           </header>
+
+           {/* Dashboard View */}
+           {activeTab === 'dashboard' && (
+              <div className="space-y-6 animate-in fade-in duration-500">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   {/* KPI Card: Total Work Hours */}
+                   <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-1">
+                      <p className="text-sm font-medium text-slate-500">Total Work Hours</p>
+                      <div className="flex items-baseline gap-2">
+                         <h2 className="text-2xl font-semibold text-slate-950">142.5h</h2>
+                         <span className="text-[10px] font-bold text-green-600">+12%</span>
+                      </div>
+                   </div>
+                   {/* KPI Card: Active Shift Duration */}
+                   <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-1">
+                      <p className="text-sm font-medium text-slate-500">Active Shift Duration</p>
+                      <h2 className="text-2xl font-semibold text-slate-950">04:32:15</h2>
+                   </div>
+                   {/* KPI Card: Productivity Score */}
+                   <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-1">
+                      <p className="text-sm font-medium text-slate-500">Productivity Score</p>
+                      <div className="flex items-baseline gap-2">
+                         <h2 className="text-2xl font-semibold text-slate-950">98.2%</h2>
+                         <span className="text-[10px] font-bold text-indigo-600">Peak</span>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                   <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-0 overflow-hidden">
+                      <StartEndShiftComponent />
+                   </div>
+                   <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-0 overflow-hidden">
+                      <CurrentShiftComponent setActiveTab={setActiveTab} />
+                   </div>
+                </div>
+              </div>
+           )}
+
+           {/* Tasks View */}
+           {activeTab === 'tasks' && (
+              <div className="animate-in fade-in duration-500 card bg-white">
+                 <TaskListComponent tasks={tasks} />
+              </div>
+           )}
+
+           {/* Shift Analytics View */}
+           {activeTab === 'analytics' && (
+              <div className="animate-in fade-in duration-500 card bg-white">
+                 <ShiftHistoryComponent />
+              </div>
+           )}
+
+           {/* Settings View - Redesigned as structured layout */}
+           {activeTab === 'settings' && (
+              <div className="space-y-6 animate-in fade-in duration-500">
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                    <nav className="space-y-1">
+                       <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-100 font-semibold text-sm">
+                          <UserSquare2 size={18} /> General
+                       </button>
+                       <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-50 font-medium text-sm">
+                          <Bell size={18} /> Notifications
+                       </button>
+                       <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-50 font-medium text-sm">
+                          <Shield size={18} /> Security
+                       </button>
+                       <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-50 font-medium text-sm">
+                          <Smartphone size={18} /> Devices
+                       </button>
+                    </nav>
+
+                    <div className="md:col-span-3 space-y-6">
+                       {/* General Settings Section */}
+                       <div className="card p-6 space-y-6 border border-slate-200 bg-white">
+                          <header>
+                             <h3 className="text-lg font-medium text-slate-950">Workspace Preferences</h3>
+                             <p className="text-sm text-slate-500">Manage how your operational environment functions.</p>
+                          </header>
+
+                          <div className="space-y-4">
+                             <div className="flex items-center justify-between py-1">
+                                <div className="space-y-0.5">
+                                   <p className="text-sm font-semibold">Enable Telemetry</p>
+                                   <p className="text-xs text-slate-500">Allow WorkSync to collect session metadata for analytics.</p>
+                                </div>
+                                <div className="w-10 h-5 bg-slate-950 rounded-full flex items-center px-1">
+                                   <div className="w-3 h-3 bg-white rounded-full ml-auto"></div>
+                                </div>
+                             </div>
+                             <div className="h-px bg-slate-100"></div>
+                             <div className="flex items-center justify-between py-1">
+                                <div className="space-y-0.5">
+                                   <p className="text-sm font-semibold">High Intensity Mode</p>
+                                   <p className="text-xs text-slate-500">Optimize dashboard for real-time focus tracking.</p>
+                                </div>
+                                <div className="w-10 h-5 bg-slate-200 rounded-full flex items-center px-1">
+                                   <div className="w-3 h-3 bg-white rounded-full"></div>
+                                </div>
+                             </div>
+                          </div>
+
+                          <footer className="pt-4 flex justify-end">
+                             <button className="btn-primary">Save Changes</button>
+                          </footer>
+                       </div>
+
+                       {/* Danger Zone */}
+                       <div className="card p-6 space-y-6 border border-red-100 bg-red-50/20">
+                          <header>
+                             <h3 className="text-lg font-medium text-red-700">Account Security</h3>
+                             <p className="text-sm text-red-600/70">Critical actions related to your workspace instance.</p>
+                          </header>
+                          <button className="flex items-center gap-2 text-xs font-bold text-red-600 uppercase tracking-widest hover:underline">
+                             <Trash2 size={14} /> Clear Cache & Manifest
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           )}
+        </main>
+        
+        <Footer />
+      </div>
+
+      {/* Logout Dialog */}
+      {showLogoutPopup && (
+        <div className="fixed inset-0 bg-slate-950/20 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+           <div className="bg-white border border-slate-200 shadow-2xl rounded-xl p-8 w-full max-w-sm">
+              <h3 className="text-lg font-semibold text-slate-950">Sign out?</h3>
+              <p className="text-sm text-slate-500 mt-2">Are you sure you want to end your current dashboard session?</p>
+              <div className="grid grid-cols-2 gap-3 mt-8">
+                 <button onClick={() => setShowLogoutPopup(false)} className="btn-secondary">Cancel</button>
+                 <button onClick={confirmLogout} className="btn-primary bg-red-600 hover:bg-red-700 border-transparent">Log out</button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const ChevronDown = ({ className, size }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="m6 9 6 6 6-6"/>
+  </svg>
+);

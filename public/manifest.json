@@ -1,6 +1,6 @@
 {
-  "name": "ScrollConnect WorkSpace",
-    "short_name": "ScrollConnect WorkSpace",
+  "name": "WorkSync Workspace",
+    "short_name": "WorkSync",
     "description": "Manage allocations, shifts, and workspace operations efficiently.",
     "display": "standalone",
     "orientation": "portrait",

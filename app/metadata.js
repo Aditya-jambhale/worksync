@@ -1,86 +1,89 @@
 export const metadata = {
-    metadataBase: new URL("https://workspace.scrollconnect.com"),
-    title: "WorkSpace",
-    description: "Manage allocations, shifts, and workspace operations efficiently.",
-    keywords: [
-        "campus events",
-        "university activities",
-        "student events",
-        "college events",
-        "campus social platform",
-        "student community",
-        "event management",
-    ],
-    authors: [{ name: "ScrollConnect" }],
-    creator: "ScrollConnect",
-    publisher: "ScrollConnect",
-    formatDetection: {
-        email: false,
-        address: false,
-        telephone: false,
+    title: {
+      default: "WorkSync | The Modern Workforce Operating System",
+      template: "%s | WorkSync"
     },
-    manifest: "/manifest.json",
-    themeColor: "#ffffff",
-    viewport: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
-    appleWebApp: {
-        capable: true,
-        statusBarStyle: "default",
-        title: "ScrollConnect",
+    description: "Enterprise-grade work tracking, shift management, and performance analytics. Designed for high-performance teams. WorkSync is the modern operating system for the distributed workforce.",
+    applicationName: "WorkSync",
+    authors: [{ name: "WorkSync Engineering", url: "https://worksync.core" }],
+    generator: "Next.js",
+    keywords: ["workforce management", "shift tracking", "productivity analytics", "employee portal", "SaaS dashboard", "work tracking", "linear alternative", "stripe for work"],
+    referrer: "origin-when-cross-origin",
+    creator: "WorkSync Core Team",
+    publisher: "WorkSync",
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
+    },
+    metadataBase: new URL("https://worksync.core"),
+    alternates: {
+      canonical: "/",
+      languages: {
+        "en-US": "/en-US",
+      },
     },
     openGraph: {
-        title: "ScrollConnect | Your Campus Events Hub",
-        description: "Your one-stop platform for discovering and managing campus events",
-        url: "https://scrollconnect.com",
-        siteName: "ScrollConnect",
-        images: [
-            {
-                url: "/og.png",
-                width: 1200,
-                height: 630,
-                alt: "ScrollConnect - Campus Events Platform",
-            },
-            {
-                url: "/og-square.png",
-                width: 600,
-                height: 600,
-                alt: "ScrollConnect - Campus Events Platform",
-            },
-        ],
-        locale: "en_US",
-        type: "website",
+      title: "WorkSync | High-Performance Workforce OS",
+      description: "Manage shifts, track performance, and sync with your team's operational core. The modern hub for distributed excellence.",
+      url: "https://worksync.core/dashboard",
+      siteName: "WorkSync",
+      images: [
+        {
+          url: "https://worksync.core/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: "WorkSync Dashboard Overhaul",
+        },
+      ],
+      locale: "en_US",
+      type: "website",
     },
     twitter: {
-        card: "summary_large_image",
-        title: "ScrollConnect | Your Campus Events Hub",
-        description: "Discover and engage with campus events like never before",
-        images: ["/twitter-image.png"],
-        creator: "@scrollconnect",
-        site: "@scrollconnect",
+      card: "summary_large_image",
+      title: "WorkSync | SaaS Productivity for Modern Teams",
+      description: "Enterprise shift management and high-fidelity work tracking. Designed for teams that prioritize focus and output.",
+      site: "@WorkSyncCore",
+      creator: "@WorkSyncCore",
+      images: ["https://worksync.core/twitter-image.png"],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
     icons: {
-        icon: [
-            { url: "/favicon.ico" },
-            { url: "/images/icon-192x192.png", sizes: "192x192", type: "image/png" },
-            { url: "//images/icon-512x512.png", sizes: "512x512", type: "image/png" },
-        ],
-        shortcut: "/favicon-16x16.png",
-        apple: [
-            { url: "/apple-touch-icon.png" },
-            { url: "/images/icon-192x192.png", sizes: "192x192", type: "image/png" },
-        ],
-        other: [
-            {
-                rel: "icon",
-                type: "image/png",
-                sizes: "32x32",
-                url: "/favicon-32x32.png",
-            },
-            {
-                rel: "icon",
-                type: "image/png",
-                sizes: "16x16",
-                url: "/favicon-16x16.png",
-            },
-        ],
+      icon: [
+        { url: "/logo.png" },
+        { url: "/logo.png", sizes: "192x192", type: "image/png" },
+        { url: "/logo.png", sizes: "512x512", type: "image/png" },
+      ],
+      shortcut: ["/logo.png"],
+      apple: [
+        { url: "/logo.png" },
+      ],
+      other: [
+        {
+          rel: "apple-touch-icon-precomposed",
+          url: "/logo.png",
+        },
+      ],
     },
+    manifest: "/manifest.json",
+  };
+
+export const viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };

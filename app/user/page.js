@@ -1,8 +1,9 @@
 "use client";
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Loader2, Mail, Lock, ShieldCheck, ChevronRight } from 'lucide-react';
 
 export default function SigninPage() {
     const router = useRouter();
@@ -20,34 +21,21 @@ export default function SigninPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Validation
         if (!formData.email || !formData.password) {
             setError('Email and password are required');
             return;
         }
-
         setLoading(true);
         setError('');
-
         try {
             const response = await fetch('/api/users/signin', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
             });
-
             const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Invalid credentials');
-            }
-
-            // Redirect to home page after successful signin
+            if (!response.ok) throw new Error(data.error || 'Invalid credentials');
             router.push('/');
-
         } catch (err) {
             setError(err.message);
         } finally {
@@ -55,40 +43,40 @@ export default function SigninPage() {
         }
     };
 
-    // Function to open admin signin in a new window
-    const openAdminSignin = () => {
-        window.open('/admin/signin');
-    };
-
     return (
-        <div className="w-full  bg-white  pt-6">
-            <div className="w-full max-w-md">
-                <div className="mb-8 flex flex-col items-center">
-                    <Image src="/logo.png" alt="Scrollconnect Logo" width={64} height={64} />   
-                    <h1 className="text-2xl font-semibold text-gray-900">Scrollconnect Workspace</h1>
-                    <p className="mt-2 text-center text-sm text-gray-600">
-                        Sign in to access your employee portal
+        <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] selection:bg-indigo-100 selection:text-indigo-900">
+            {/* Subtle background texture */}
+            <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
+            
+            <div className="w-full max-w-[400px] relative z-10 space-y-8">
+                <div className="flex flex-col items-center text-center space-y-2">
+                    <div className="relative mb-4 group">
+                        <div className="absolute -inset-1 bg-indigo-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                        <div className="relative w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center transition-transform hover:scale-105 duration-300">
+                            <Image src="/logo.png" alt="WorkSync" width={28} height={28} className="object-contain" />
+                        </div>
+                    </div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-950">Welcome back</h1>
+                    <p className="text-sm text-muted-foreground font-medium">
+                        Enter your credentials to access your workspace
                     </p>
                 </div>
 
-                {error && (
-                    <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded">
-                        <div className="flex">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                            {error}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">
+                    {error && (
+                        <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0" />
+                            <p className="text-xs font-semibold leading-relaxed">{error}</p>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                <div className="bg-white py-8 px-6 shadow rounded-lg sm:px-10  border-gray-200">
-                    <form className="mb-0 space-y-6" onSubmit={handleSubmit}>
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                                Email Address
+                    <form className="space-y-4" onSubmit={handleSubmit}>
+                        <div className="space-y-2">
+                            <label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-0.5">
+                                Work Email
                             </label>
-                            <div className="mt-1">
+                            <div className="relative group">
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                                 <input
                                     id="email"
                                     name="email"
@@ -97,16 +85,23 @@ export default function SigninPage() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     required
-                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    placeholder="name@company.com"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all shadow-sm"
                                 />
                             </div>
                         </div>
 
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                                Password
-                            </label>
-                            <div className="mt-1">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between ml-0.5">
+                                <label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                                    Password
+                                </label>
+                                <Link href="#" className="text-xs font-bold text-indigo-600 hover:underline underline-offset-4">
+                                    Forgot?
+                                </Link>
+                            </div>
+                            <div className="relative group">
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                                 <input
                                     id="password"
                                     name="password"
@@ -115,76 +110,66 @@ export default function SigninPage() {
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
-                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    placeholder="••••••••"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all shadow-sm"
                                 />
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center">
+                        <div className="flex items-center gap-2 px-0.5 py-1">
+                            <div className="flex items-center h-5">
                                 <input
-                                    id="remember-me"
-                                    name="remember-me"
+                                    id="remember"
                                     type="checkbox"
-                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                                 />
-                                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                                    Remember me
-                                </label>
                             </div>
-
-                            <div className="text-sm">
-                                <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-                                    Forgot your password?
-                                </a>
-                            </div>
+                            <label htmlFor="remember" className="text-[13px] font-medium text-slate-500 cursor-pointer select-none">
+                                Keep me signed in
+                            </label>
                         </div>
 
-                        <div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                            >
-                                {loading ? 
-                                    <span className="flex items-center">
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Signing in...
-                                    </span> 
-                                    : 'Sign In'}
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold py-3 rounded-xl shadow-lg shadow-slate-200 transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 group"
+                        >
+                            {loading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <>
+                                  <span>Sign in</span>
+                                  <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                                </>
+                            )}
+                        </button>
                     </form>
 
-                    <div className="mt-6">
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300"></div>
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500">
-                                    Admin access
-                                </span>
-                            </div>
+                    <div className="relative py-2">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-slate-100" />
                         </div>
+                        <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-black">
+                            <span className="bg-white px-3 text-slate-400">Admin Portal</span>
+                        </div>
+                    </div>
 
-                        <div className="mt-6">
-                            <button
-                                type="button"
-                                onClick={openAdminSignin}
-                                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                            >
-                                Sign in as Administrator
-                            </button>
-                        </div>
+                    <button
+                        onClick={() => router.push('/admin/signin')}
+                        className="w-full py-3 px-4 bg-white border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm active:scale-[0.98]"
+                    >
+                        Sign in as Administrator
+                    </button>
+
+                    <div className="text-center pt-2">
+                       <p className="text-xs font-medium text-slate-500">
+                          New to WorkSync? <Link href="/user/signup" className="text-indigo-600 font-bold hover:underline">Create Account</Link>
+                       </p>
                     </div>
                 </div>
 
-                <p className="mt-4 text-center text-xs text-gray-600">
-                    &copy; 2025 Scrollconnect. All rights reserved.
+                <p className="text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                    &copy; {new Date().getFullYear()} WorkSync &bull; Secure Infrastructure
                 </p>
             </div>
         </div>

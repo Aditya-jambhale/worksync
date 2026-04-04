@@ -3,6 +3,14 @@ import { useState, useEffect, useCallback } from 'react';
 import Cookies from 'js-cookie';
 import supabase from '@/app/DB/dbConnect';
 import { useRouter } from 'next/navigation';
+import { 
+  Users, Calendar, CheckSquare, Plus, LogOut, Search, 
+  Menu, X, Bell, ChevronDown, CheckCircle2, AlertCircle, 
+  Clock, Hash, FileText, LayoutDashboard, Settings,
+  MoreVertical, Command, TrendingUp, UserCheck, AlertTriangle,
+  ArrowUpRight, Trash2, Edit3, UserPlus, Filter, ChevronLeft, ChevronRight,Shield
+} from 'lucide-react';
+import Image from 'next/image';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -17,8 +25,13 @@ export default function AdminDashboard() {
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const [adminId, setAdminId] = useState(null);
   const [adminName, setAdminName] = useState('');
-  const [activeTab, setActiveTab] = useState('tasks');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [showModal, setShowModal] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [taskPriority, setTaskPriority] = useState('Medium');
+  const [taskStatus, setTaskStatus] = useState('Pending');
 
   // Notification helper
   const showNotification = (message, type) => {
@@ -28,510 +41,731 @@ export default function AdminDashboard() {
     }, 3000);
   };
 
-  // Fetch tasks assigned by the admin
   const fetchAdminTasks = useCallback(async (adminId) => {
     if (!adminId) return;
     setLoadingTasks(true);
     try {
-      // Fetch tasks with the assigned user's name from the tasks table
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
-        .select(`
-          taskid,
-          taskdescription,
-          createdat,
-          userId,
-          user:users(name)
-        `)
+        .select(`*, users(name)`)
         .eq('adminId', adminId)
         .order('createdat', { ascending: false });
 
       if (tasksError) throw tasksError;
       setAdminTasks(tasksData || []);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
-      showNotification('Failed to load tasks', 'error');
+      showNotification(`Tasks Error: ${error.message}`, 'error');
     } finally {
       setLoadingTasks(false);
     }
   }, []);
 
-  // Fetch shifts data separately
   const fetchShiftsData = useCallback(async () => {
     setLoadingShifts(true);
     try {
       const { data, error } = await supabase
         .from('shifts')
-        .select(`
-          id,
-          user_id,
-          start_time,
-          end_time,
-          status,
-          notes,
-          users(name)
-        `)
+        .select(`*, users(name)`)
         .order('start_time', { ascending: false });
 
       if (error) throw error;
       setShiftsData(data || []);
     } catch (error) {
-      console.error('Error fetching shifts:', error);
-      showNotification('Failed to load shifts data', 'error');
+      showNotification(`Shifts Error: ${error.message}`, 'error');
     } finally {
       setLoadingShifts(false);
     }
   }, []);
 
-  // Get admin details from the /api/admin/me endpoint
   useEffect(() => {
     const getAdminSession = async () => {
       try {
         const userResponse = await fetch('/api/admin/me', {
-          headers: {
-            'Authorization': `Bearer ${Cookies.get('admin_session_token')}`
-          }
+          headers: { 'Authorization': `Bearer ${Cookies.get('admin_session_token')}` }
         });
-
-        if (!userResponse.ok) {
-          throw new Error('Failed to fetch admin details');
-        }
-
+        if (!userResponse.ok) throw new Error('Failed to fetch admin details');
         const adminData = await userResponse.json();
         if (adminData && adminData.admin) {
           setAdminId(adminData.admin.adminId);
           setAdminName(adminData.admin.name || adminData.admin.email || 'Admin');
           fetchAdminTasks(adminData.admin.adminId);
           fetchShiftsData();
-        } else {
-          showNotification('Admin session not found. Please login again.', 'error');
         }
       } catch (error) {
-        console.error('Error retrieving admin session:', error);
-        showNotification('Session error. Please login again.', 'error');
+        router.push('/admin/signin');
       }
     };
-
     getAdminSession();
-  }, [fetchAdminTasks, fetchShiftsData]);
+  }, [fetchAdminTasks, fetchShiftsData, router]);
 
-  // Fetch all users from the database
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchUsersData = async () => {
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('userId, name')
-          .order('name');
-
+        const { data, error } = await supabase.from('users').select('userId, name, email, role').order('name');
         if (error) throw error;
         setUsers(data || []);
       } catch (error) {
-        console.error('Error fetching users:', error);
         showNotification('Failed to load users', 'error');
       }
     };
-
-    fetchUsers();
+    fetchUsersData();
   }, []);
 
   const confirmLogout = async () => {
     try {
-      const response = await fetch("/api/admin/signout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${Cookies.get("admin_session_token")}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to sign out");
-      }
+      await fetch("/api/admin/signout", { method: "POST" });
       router.push("/admin/signin");
     } catch (error) {
       console.error("Error during logout:", error);
     }
   };
 
-  // Handle task assignment
   const handleAssignTask = async (e) => {
     e.preventDefault();
-
-    if (!adminId) {
-      showNotification('Admin session expired. Please login again.', 'error');
+    if (!adminId) return;
+    if (!task.trim() || !selectedUser) {
+      showNotification('Please fill all fields', 'warning');
       return;
     }
-
-    if (!task.trim()) {
-      showNotification('Please enter a task description', 'warning');
-      return;
-    }
-
-    if (!selectedUser) {
-      showNotification('Please select a user', 'warning');
-      return;
-    }
-
     setLoading(true);
-
     try {
-      // Insert task into the tasks table
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert([
-          {
-            taskdescription: task,
-            userId: selectedUser,
-            adminId: adminId,
-          },
-        ])
-        .select();
-
-      if (error) throw error;
-
-      // Find the assigned user's name
-      const userName = users.find((user) => user.userId === selectedUser)?.name || 'Unknown';
-
-      // Append the new task to the list
-      setAdminTasks([
-        {
-          taskid: data[0].taskid,
-          taskdescription: task,
-          createdat: data[0].createdat,
-          userId: selectedUser,
-          user: { name: userName },
-        },
-        ...adminTasks,
-      ]);
-
-      // Reset form fields and close modal
-      setTask('');
-      setSelectedUser('');
-      setShowModal(false);
-      showNotification('Task assigned successfully', 'success');
+      if (editingTaskId) {
+        const { error } = await supabase
+          .from('tasks')
+          .update({ 
+            taskdescription: task, 
+            userId: selectedUser, 
+            priority: taskPriority, 
+            status: taskStatus 
+          })
+          .eq('taskid', editingTaskId);
+        
+        if (error) throw error;
+        
+        const userName = users.find((user) => user.userId === selectedUser)?.name || 'Unknown';
+        setAdminTasks(prev => prev.map(t => t.taskid === editingTaskId ? { 
+          ...t, 
+          taskdescription: task, 
+          userId: selectedUser, 
+          priority: taskPriority, 
+          status: taskStatus,
+          user: { name: userName }
+        } : t));
+        
+        showNotification('Task updated successfully', 'success');
+      } else {
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert([{ 
+            taskdescription: task, 
+            userId: selectedUser, 
+            adminId: adminId, 
+            status: taskStatus, 
+            priority: taskPriority 
+          }])
+          .select();
+        
+        if (error) throw error;
+        
+        const userName = users.find((user) => user.userId === selectedUser)?.name || 'Unknown';
+        setAdminTasks([{ 
+          taskid: data[0].taskid, 
+          taskdescription: task, 
+          createdat: data[0].createdat, 
+          userId: selectedUser, 
+          user: { name: userName }, 
+          status: taskStatus, 
+          priority: taskPriority 
+        }, ...adminTasks]);
+        
+        showNotification('Task assigned successfully', 'success');
+      }
+      
+      resetModal();
     } catch (error) {
-      console.error('Error assigning task:', error);
-      showNotification('Failed to assign task', 'error');
+      showNotification(editingTaskId ? 'Failed to update task' : 'Failed to assign task', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // Format date and time in 12-hour format
-  const formatDateTime12Hour = (dateString) => {
-    if (!dateString) return 'N/A';
-    const dateObj = new Date(dateString);
-    return dateObj.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
-    });
+  const resetModal = () => {
+    setTask('');
+    setSelectedUser('');
+    setTaskPriority('Medium');
+    setTaskStatus('Pending');
+    setEditingTaskId(null);
+    setShowModal(false);
   };
 
+  const openEditModal = (taskObj) => {
+    setEditingTaskId(taskObj.taskid);
+    setTask(taskObj.taskdescription);
+    setSelectedUser(taskObj.userId);
+    setTaskPriority(taskObj.priority || 'Medium');
+    setTaskStatus(taskObj.status || 'Pending');
+    setShowModal(true);
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to permanently decommission this task node?')) return;
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('taskid', taskId);
+
+      if (error) throw error;
+      setAdminTasks(prev => prev.filter(t => t.taskid !== taskId));
+      showNotification('Task decommissioned successfully', 'success');
+    } catch (error) {
+      showNotification(`Delete Error: ${error.message}`, 'error');
+    }
+  };
+
+  const formatDate = (dateString) => {
+     const date = new Date(dateString);
+     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const stats = [
+    { label: 'Active Personnel', value: users.length, icon: UserCheck, color: 'text-indigo-600', trend: '+4%' },
+    { label: 'Tasks Pending', value: adminTasks.filter(t => t.status !== 'Completed').length, icon: Clock, color: 'text-amber-600', trend: '-2%' },
+    { label: 'Tasks Completed', value: adminTasks.filter(t => t.status === 'Completed').length, icon: CheckCircle2, color: 'text-green-600', trend: '+12%' },
+    { label: 'Efficiency Score', value: '98.2%', icon: TrendingUp, color: 'text-blue-600', trend: '+1.4%' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-            {adminName && <p className="text-gray-500">Welcome, {adminName}</p>}
-          </div>
-          <button
-            onClick={confirmLogout}
-            className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded font-medium transition-colors"
-          >
-            Sign Out
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#fafafa] flex flex-col md:flex-row text-slate-950 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
+      
+      {/* Mobile Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/20 backdrop-blur-sm z-[60] md:hidden transition-all duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Notification */}
-        {notification.show && (
-          <div
-            className={`p-4 mb-6 rounded flex items-center ${
-              notification.type === 'success'
-                ? 'bg-green-50 text-green-700 border-l-4 border-green-500'
-                : notification.type === 'error'
-                ? 'bg-red-50 text-red-700 border-l-4 border-red-500'
-                : 'bg-yellow-50 text-yellow-700 border-l-4 border-yellow-500'
-            }`}
-          >
-            <div className="mr-3">
-              {notification.type === 'success' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              ) : notification.type === 'error' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              )}
-            </div>
-            {notification.message}
-          </div>
-        )}
-
-        {/* Action Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex space-x-4">
-            <button
-              onClick={() => setActiveTab('tasks')}
-              className={`px-4 py-2 rounded font-medium ${
-                activeTab === 'tasks'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Tasks
-            </button>
-            <button
-              onClick={() => setActiveTab('shifts')}
-              className={`px-4 py-2 rounded font-medium ${
-                activeTab === 'shifts'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Shifts
-            </button>
-          </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Assign New Task
-          </button>
-        </div>
-
-        {/* Task Assignment Modal */}
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
-              <div className="p-5 border-b">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium">Assign New Task</h3>
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
+      {/* Admin Sidebar - SaaS Layout */}
+      <aside 
+        className={`fixed left-0 top-0 h-full border-r border-slate-200 bg-white transition-all duration-300 z-[70] flex flex-col 
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+          md:translate-x-0 
+          ${sidebarCollapsed ? 'md:w-[72px]' : 'md:w-64'} 
+          w-64`}
+      >
+        {/* Brand Logo */}
+        <div className="h-16 flex items-center justify-between px-4 shrink-0">
+           <div className={`flex items-center gap-3 transition-opacity duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:overflow-hidden' : 'opacity-100'}`}>
+              <div className="w-8 h-8 flex items-center justify-center bg-slate-950 rounded-lg">
+                 <Image src="/logo.png" alt="W" width={18} height={18} className="invert brightness-0" />
               </div>
+              <div className="flex flex-col">
+                 <span className="font-semibold tracking-tight text-sm">WorkSync</span>
+                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Admin Console</span>
+              </div>
+           </div>
+           <button 
+             onClick={() => {
+               if (window.innerWidth < 768) setIsMobileMenuOpen(false);
+               else setSidebarCollapsed(!sidebarCollapsed);
+             }}
+             className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400"
+           >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+           </button>
+        </div>
 
-              <form onSubmit={handleAssignTask} className="p-5">
-                <div className="mb-4">
-                  <label htmlFor="task" className="block text-sm font-medium text-gray-700 mb-1">
-                    Task Description
-                  </label>
-                  <textarea
-                   id="task"
-                   rows="4"
-                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   value={task}
-                   onChange={(e) => setTask(e.target.value)}
-                   placeholder="Enter detailed task description..."
-                   required
+        {/* Navigation Groups */}
+        <div className="flex-1 px-3 py-6 space-y-8 overflow-y-auto">
+           {/* Section: Core */}
+           <div className="space-y-1">
+              {!sidebarCollapsed && <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Core Registry</p>}
+              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all h-10 relative group ${activeTab === 'dashboard' ? 'bg-slate-100 text-slate-950 font-semibold' : 'text-slate-500 hover:text-slate-950 hover:bg-slate-50 font-medium'}`}
+              >
+                <LayoutDashboard size={18} />
+                <span className={`text-sm ${sidebarCollapsed ? 'md:hidden' : 'inline'}`}>Overview</span>
+                {activeTab === 'dashboard' && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-slate-950 rounded-r-full" />}
+              </button>
+              <button 
+                onClick={() => setActiveTab('tasks')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all h-10 relative group ${activeTab === 'tasks' ? 'bg-slate-100 text-slate-950 font-semibold' : 'text-slate-500 hover:text-slate-950 hover:bg-slate-50 font-medium'}`}
+              >
+                <CheckSquare size={18} />
+                <span className={`text-sm ${sidebarCollapsed ? 'md:hidden' : 'inline'}`}>Task Console</span>
+                {activeTab === 'tasks' && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-slate-950 rounded-r-full" />}
+              </button>
+           </div>
+
+           {/* Section: Management */}
+           <div className="space-y-1">
+              {!sidebarCollapsed && <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Management</p>}
+              <button 
+                onClick={() => setActiveTab('shifts')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all h-10 relative group ${activeTab === 'shifts' ? 'bg-slate-100 text-slate-950 font-semibold' : 'text-slate-500 hover:text-slate-950 hover:bg-slate-50 font-medium'}`}
+              >
+                <Clock size={18} />
+                <span className={`text-sm ${sidebarCollapsed ? 'md:hidden' : 'inline'}`}>Shift Logs</span>
+                {activeTab === 'shifts' && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-slate-950 rounded-r-full" />}
+              </button>
+              <button 
+                onClick={() => setActiveTab('users')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all h-10 relative group ${activeTab === 'users' ? 'bg-slate-100 text-slate-950 font-semibold' : 'text-slate-500 hover:text-slate-950 hover:bg-slate-50 font-medium'}`}
+              >
+                <Users size={18} />
+                <span className={`text-sm ${sidebarCollapsed ? 'md:hidden' : 'inline'}`}>Personnel</span>
+                {activeTab === 'users' && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-slate-950 rounded-r-full" />}
+              </button>
+           </div>
+        </div>
+
+        {/* User Profile */}
+        <div className="p-3 border-t border-slate-200 shrink-0">
+           <button 
+             onClick={confirmLogout}
+             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all font-medium text-xs h-10"
+           >
+              <LogOut size={18} className="shrink-0" />
+              <span className={`transition-opacity duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:w-0' : 'opacity-100'}`}>Logout  </span>
+           </button>
+           <div className={`mt-4 p-3 bg-slate-50 rounded-xl flex items-center gap-3 transition-all duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:overflow-hidden' : 'opacity-100'}`}>
+              <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                 {adminName?.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                 <p className="text-xs font-semibold truncate text-slate-950">{adminName}</p>
+                 <p className="text-[10px] text-slate-500 font-medium truncate uppercase tracking-tighter italic">Administrator</p>
+              </div>
+           </div>
+        </div>
+      </aside>
+
+      {/* Admin Content Area */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 
+        ${sidebarCollapsed ? 'md:pl-[72px]' : 'md:pl-64'} 
+        w-full min-w-0 bg-[#fafafa]`}>
+        
+        {/* Header Ribbon */}
+        <header className="h-16 border-b border-slate-200 bg-white sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between gap-4">
+           {/* Mobile Trigger */}
+           <button 
+             onClick={() => setIsMobileMenuOpen(true)}
+             className="p-2 md:hidden hover:bg-slate-100 rounded-lg text-slate-600"
+           >
+             <Menu size={20} />
+           </button>
+
+           <div className="flex flex-1 items-center gap-4">
+              <div className="relative w-full max-w-sm hidden sm:block group">
+                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-950 transition-colors" />
+                 <input 
+                   type="text" 
+                   placeholder="Search (⌘K)" 
+                   className="w-full pl-9 pr-4 py-1.5 border border-slate-200 bg-slate-50 rounded-lg outline-none text-sm font-medium focus:bg-white focus:ring-1 focus:ring-slate-950 transition-all"
                  />
-               </div>
+              </div>
+           </div>
 
-               <div className="mb-4">
-                 <label htmlFor="user" className="block text-sm font-medium text-gray-700 mb-1">
-                   Assign To
-                 </label>
-                 <select
-                   id="user"
-                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   value={selectedUser}
-                   onChange={(e) => setSelectedUser(e.target.value)}
-                   required
-                 >
-                   <option value="">Select User</option>
-                   {users.map((user) => (
-                     <option key={user.userId} value={user.userId}>
-                       {user.name}
-                     </option>
-                   ))}
-                 </select>
-               </div>
+           <div className="flex items-center gap-3">
+              <button className="p-2 text-slate-400 hover:text-slate-950 transition-colors relative">
+                 <Bell size={18} />
+                 <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white"></div>
+              </button>
+              <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
+              <div className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded-lg transition-all cursor-pointer">
+                 <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold">AD</div>
+                 <ChevronDown size={14} className="text-slate-400" />
+              </div>
+           </div>
+        </header>
 
-               <div className="flex justify-end space-x-3 mt-6">
-                 <button
-                   type="button"
-                   onClick={() => setShowModal(false)}
-                   className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium"
-                 >
-                   Cancel
+        {/* Page Main View */}
+        <main className="flex-1 space-y-8 p-6 md:p-8 lg:p-10 max-w-7xl w-full mx-auto">
+           {/* Section Header */}
+           <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="space-y-1">
+                 <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
+                    {activeTab === 'dashboard' ? 'Operational Overview' : 
+                     activeTab === 'tasks' ? 'Task Control Console' : 
+                     activeTab === 'shifts' ? 'Shift Logs' : 
+                     'Personnel Registry'}
+                 </h1>
+                 <p className="text-sm text-slate-500">
+                    {activeTab === 'dashboard' ? "Aggregated telemetry from your operational workforce." :
+                     activeTab === 'tasks' ? "Assign and monitor operational goals for personnel." :
+                     activeTab === 'shifts' ? "Detailed historical logs of personnel work cycles." :
+                     "Manage the active workforce identity registry."}
+                 </p>
+              </div>
+              <div className="flex items-center gap-3">
+                 <button className="flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 bg-white text-xs font-semibold hover:bg-slate-50 transition-all">
+                    <Filter size={14} className="text-slate-400" />
+                    Filters
                  </button>
-                 <button
-                   type="submit"
-                   disabled={loading}
-                   className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                 <button 
+                   onClick={() => { resetModal(); setShowModal(true); }}
+                   className="flex items-center gap-2 h-9 px-4 rounded-lg bg-slate-950 text-white text-xs font-semibold hover:bg-slate-900 shadow-sm transition-all active:scale-95"
                  >
-                   {loading ? (
-                     <div className="flex items-center">
-                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                       </svg>
-                       Assigning...
-                     </div>
-                   ) : (
-                     'Assign Task'
-                   )}
+                    <Plus size={16} />
+                    Create Assignment
                  </button>
-               </div>
+              </div>
+           </header>
+
+           {/* Overview Metrics */}
+           {activeTab === 'dashboard' && (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {stats.map((stat, i) => (
+                       <div key={i} className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4 group hover:border-slate-300 transition-all">
+                          <header className="flex items-center justify-between">
+                             <div className={`p-2 rounded-lg bg-slate-50 border border-slate-100 ${stat.color}`}>
+                                <stat.icon size={18} />
+                             </div>
+                             <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${stat.trend.startsWith('+') ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                {stat.trend}
+                             </span>
+                          </header>
+                          <div className="space-y-1">
+                             <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+                             <h3 className="text-2xl font-semibold text-slate-950">{stat.value}</h3>
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
+                    <div className="lg:col-span-8 space-y-6">
+                       <header className="flex items-center justify-between">
+                          <h3 className="text-lg font-semibold text-slate-950">Active Assignments</h3>
+                          <button className="text-[11px] font-bold text-slate-400 hover:text-slate-950 transition-colors uppercase tracking-widest">View All Console</button>
+                       </header>
+                       <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-0 overflow-hidden divide-y divide-slate-100">
+                          {adminTasks.slice(0, 5).map((t, i) => (
+                             <div key={i} className="p-5 flex items-center justify-between hover:bg-slate-50/50 transition-all">
+                                <div className="flex items-start gap-4">
+                                   <div className={`mt-0.5 w-2.5 h-2.5 rounded-full ${i === 0 ? 'bg-blue-500 ring-4 ring-blue-50' : 'bg-slate-200'}`}></div>
+                                   <div className="space-y-0.5">
+                                      <p className="text-sm font-semibold text-slate-900">{t.taskdescription}</p>
+                                      <div className="flex items-center gap-3 text-xs text-slate-500">
+                                         <span className="font-bold text-slate-950 uppercase text-[10px]">{t.users?.name}</span>
+                                         <span>&bull;</span>
+                                         <span>{formatDate(t.createdat)}</span>
+                                      </div>
+                                   </div>
+                                </div>
+                                <ArrowUpRight size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+
+                    <div className="lg:col-span-4 space-y-6">
+                        <header className="flex items-center justify-between">
+                          <h3 className="text-lg font-semibold text-slate-950">Personnel Summary</h3>
+                        </header>
+                        <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-6 space-y-6">
+                           {users.slice(0, 4).map((u, i) => (
+                             <div key={i} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                   <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">{u.name.charAt(0)}</div>
+                                   <p className="text-xs font-bold text-slate-900">{u.name}</p>
+                                </div>
+                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                             </div>
+                           ))}
+                           <button className="w-full py-2.5 border border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest rounded-lg hover:bg-slate-50 transition-all">Expand Logs</button>
+                        </div>
+                    </div>
+                 </div>
+              </div>
+           )}
+
+           {/* Task Control Console View */}
+           {activeTab === 'tasks' && (
+              <div className="animate-in fade-in duration-500 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                       <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
+                             <th className="px-6 py-4">Assignment Node</th>
+                             <th className="px-6 py-4">Assigned To</th>
+                             <th className="px-6 py-4 text-center">Priority</th>
+                             <th className="px-6 py-4 text-center">Status</th>
+                             <th className="px-6 py-4 text-right">Action</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-100">
+                          {adminTasks.map((item, i) => (
+                             <tr key={item.taskid} className="hover:bg-slate-50/50 transition-colors group">
+                                <td className="px-6 py-4">
+                                   <div className="space-y-0.5">
+                                      <p className="text-sm font-semibold text-slate-950 truncate max-w-sm">{item.taskdescription}</p>
+                                      <p className="text-[10px] font-mono text-slate-400">ID: #{item.taskid.slice(0, 8)}</p>
+                                   </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                   <div className="flex items-center gap-2">
+                                      <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500 uppercase">{item.users?.name?.charAt(0)}</div>
+                                      <span className="text-xs font-semibold text-slate-950 uppercase">{item.users?.name}</span>
+                                   </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                   <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                                     item.priority === 'High' ? 'bg-red-50 text-red-600 border-red-100' :
+                                     item.priority === 'Medium' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                     'bg-slate-50 text-slate-500 border-slate-200'
+                                   }`}>
+                                      {item.priority || 'Medium'}
+                                   </span>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                                     item.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-200' : 
+                                     item.status === 'In Progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                     'bg-slate-100 text-slate-500 border-slate-200'
+                                   }`}>
+                                      {item.status || 'Pending'}
+                                   </span>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                   <div className="flex items-center justify-end gap-2">
+                                      <button 
+                                        onClick={() => openEditModal(item)}
+                                        className="p-1 px-2 text-slate-400 hover:text-slate-950 hover:bg-slate-100 rounded-md transition-all"
+                                      >
+                                        <Edit3 size={14} />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteTask(item.taskid)}
+                                        className="p-1 px-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                   </div>
+                                </td>
+                             </tr>
+                          ))}
+                       </tbody>
+                    </table>
+                 </div>
+              </div>
+           )}
+
+           {/* Shift Registry View */}
+           {activeTab === 'shifts' && (
+              <div className="animate-in fade-in duration-500 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                       <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
+                             <th className="px-6 py-4">Identity</th>
+                             <th className="px-6 py-4">Interval</th>
+                             <th className="px-6 py-4 text-center">Session Status</th>
+                             <th className="px-6 py-4">Operational Notes</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-100">
+                          {shiftsData.map((shift) => (
+                             <tr key={shift.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-6 py-4">
+                                   <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600 uppercase">{shift.users?.name?.charAt(0)}</div>
+                                      <span className="text-xs font-bold text-slate-950 uppercase">{shift.users?.name}</span>
+                                   </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                   <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-950">
+                                         <Clock size={12} className="text-slate-400" />
+                                         {new Date(shift.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </div>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase">{formatDate(shift.start_time)}</p>
+                                   </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                     shift.status === 'completed' ? 'bg-slate-100 text-slate-700 border-slate-200' : 
+                                     'bg-green-50 text-green-700 border-green-200 ring-2 ring-green-100 animate-pulse'
+                                   }`}>
+                                      {shift.status || 'Active'}
+                                   </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                   <p className="text-[11px] font-medium text-slate-500 lg:max-w-xs truncate italic">{shift.notes || 'No operational comments recorded'}</p>
+                                </td>
+                             </tr>
+                          ))}
+                       </tbody>
+                    </table>
+                 </div>
+              </div>
+           )}
+
+           {/* Personnel Registry View */}
+           {activeTab === 'users' && (
+              <div className="animate-in fade-in duration-500 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                       <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
+                             <th className="px-6 py-4">Personnel Identity</th>
+                             <th className="px-6 py-4">Work Email</th>
+                             <th className="px-6 py-4 text-center">Credential Role</th>
+                             <th className="px-6 py-4 text-center">Current Status</th>
+                             <th className="px-6 py-4 text-right">Actions</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-100">
+                           {users.map((u, i) => {
+                             const isActive = shiftsData.some(s => s.user_id === u.userId && s.status !== 'completed');
+                             return (
+                               <tr key={u.userId} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="px-6 py-4">
+                                     <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center text-xs font-bold text-white uppercase">{u.name.charAt(0)}</div>
+                                        <span className="text-xs font-bold text-slate-950 uppercase">{u.name}</span>
+                                     </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                     <span className="text-xs font-medium text-slate-500">{u.email}</span>
+                                  </td>
+                                  <td className="px-6 py-4 text-center">
+                                     <span className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                                        <Shield size={10} />
+                                         {u.role || 'Personnel'}
+                                     </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-center">
+                                     <div className="flex items-center justify-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`}></div>
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-slate-950' : 'text-slate-400'}`}>
+                                          {isActive ? 'On-Duty' : 'Offline'}
+                                        </span>
+                                     </div>
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                     <button className="p-1 px-2 text-slate-400 hover:text-slate-950 rounded-md transition-all"><MoreVertical size={14} /></button>
+                                  </td>
+                               </tr>
+                             );
+                           })}
+                        </tbody>
+                    </table>
+                 </div>
+              </div>
+           )}
+        </main>
+      </div>
+
+      {/* Assignment Modal - Pure SaaS UX */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowModal(false)}></div>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto overflow-hidden animate-in zoom-in-95 duration-200 relative border border-slate-200 my-auto">
+             <header className="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50">
+                <h3 className="text-xl font-semibold text-slate-950">{editingTaskId ? 'Edit Assignment' : 'Create Assignment'}</h3>
+                <p className="text-sm text-slate-500 mt-1">{editingTaskId ? 'Modify existing operational deliverables.' : 'Define requirements and deploy a task node.'}</p>
+             </header>
+
+             <form onSubmit={handleAssignTask} className="p-6 md:p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                <div className="space-y-2">
+                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-0.5">Task Requirements</label>
+                   <textarea
+                     rows="3"
+                     value={task}
+                     onChange={(e) => setTask(e.target.value)}
+                     placeholder="Example: Execute the security audit..."
+                     className="w-full p-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-slate-950 outline-none transition-all resize-none text-sm font-medium"
+                     required
+                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-0.5">Priority Weight</label>
+                      <select 
+                         value={taskPriority}
+                         onChange={(e) => setTaskPriority(e.target.value)}
+                         className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white outline-none text-sm font-medium transition-all"
+                      >
+                         <option value="Low">Low</option>
+                         <option value="Medium">Medium</option>
+                         <option value="High">High</option>
+                      </select>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-0.5">Initial Status</label>
+                      <select 
+                         value={taskStatus}
+                         onChange={(e) => setTaskStatus(e.target.value)}
+                         className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white outline-none text-sm font-medium transition-all"
+                      >
+                         <option value="Pending">Pending</option>
+                         <option value="In Progress">In Progress</option>
+                         <option value="Completed">Completed</option>
+                      </select>
+                   </div>
+                </div>
+
+                <div className="space-y-2">
+                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-0.5">Assign Personnel</label>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                      {users.map(u => (
+                        <button
+                          key={u.userId}
+                          type="button"
+                          onClick={() => setSelectedUser(u.userId)}
+                          className={`p-3 rounded-lg border flex items-center gap-3 transition-all ${
+                            selectedUser === u.userId ? 'bg-slate-950 text-white border-slate-950' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                           <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${selectedUser === u.userId ? 'bg-white/20' : 'bg-slate-100'}`}>{u.name.charAt(0)}</div>
+                           <span className="text-xs font-bold truncate">{u.name}</span>
+                        </button>
+                      ))}
+                   </div>
+                </div>
              </form>
+
+             <footer className="p-6 md:p-8 border-t border-slate-100 bg-white flex flex-col sm:flex-row gap-3">
+                <button 
+                   onClick={() => setShowModal(false)} 
+                   type="button" 
+                   className="w-full sm:flex-1 h-11 border border-slate-200 rounded-lg text-sm font-bold text-slate-500 hover:bg-slate-50 transition-all"
+                >
+                   Discard
+                </button>
+                <button 
+                   type="submit" 
+                   onClick={handleAssignTask}
+                   className="w-full sm:flex-[2] h-11 bg-slate-950 text-white rounded-lg text-sm font-bold hover:bg-slate-900 shadow-xl shadow-slate-200 transition-all font-mono tracking-tighter"
+                >
+                   {editingTaskId ? 'Execute Update' : 'Submit Assignment'}
+                </button>
+             </footer>
+          </div>
+        </div>
+      )}
+
+      {/* Global Notification */}
+      {notification.show && (
+        <div className="fixed bottom-8 right-8 z-[110] animate-in slide-in-from-right-4 duration-300">
+           <div className={`p-4 rounded-xl border-t-4 shadow-2xl flex items-center gap-3 min-w-[280px] bg-white ${
+              notification.type === 'success' ? 'border-green-500' : 'border-red-500'
+           }`}>
+              <div className={`p-1.5 rounded-full ${notification.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                 {notification.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+              </div>
+              <div>
+                 <p className="text-xs font-bold text-slate-950">{notification.message}</p>
+                 <p className="text-[10px] font-medium text-slate-400 capitalize">{notification.type}</p>
+              </div>
            </div>
-         </div>
-       )}
-
-       {/* Content Based on Active Tab */}
-       <div className="bg-white shadow rounded-lg overflow-hidden">
-         {/* Tasks View */}
-         {activeTab === 'tasks' && (
-           <div>
-             <div className="px-6 py-4 border-b border-gray-200">
-               <h2 className="text-lg font-medium text-gray-800">Assigned Tasks</h2>
-             </div>
-
-             {loadingTasks ? (
-               <div className="p-6 flex justify-center">
-                 <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                 </svg>
-               </div>
-             ) : adminTasks.length === 0 ? (
-               <div className="p-6 text-center text-gray-500">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                 </svg>
-                 <p>No tasks have been assigned yet.</p>
-                 <button
-                   onClick={() => setShowModal(true)}
-                   className="mt-3 px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors"
-                 >
-                   Assign Your First Task
-                 </button>
-               </div>
-             ) : (
-               <div className="overflow-x-auto">
-                 <table className="min-w-full divide-y divide-gray-200">
-                   <thead className="bg-gray-50">
-                     <tr>
-                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
-                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned On</th>
-                     </tr>
-                   </thead>
-                   <tbody className="bg-white divide-y divide-gray-200">
-                     {adminTasks.map((item) => (
-                       <tr key={item.taskid} className="hover:bg-gray-50">
-                         <td className="px-6 py-4 whitespace-normal">
-                           <div className="text-sm text-gray-900">{item.taskdescription}</div>
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <div className="text-sm text-gray-900">{item.user?.name || 'Unknown'}</div>
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <div className="text-sm text-gray-500">
-                             {formatDateTime12Hour(item.createdat)}
-                           </div>
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-             )}
-           </div>
-         )}
-
-         {/* Shifts View */}
-         {activeTab === 'shifts' && (
-           <div>
-             <div className="px-6 py-4 border-b border-gray-200">
-               <h2 className="text-lg font-medium text-gray-800">Staff Shifts</h2>
-             </div>
-
-             {loadingShifts ? (
-               <div className="p-6 flex justify-center">
-                 <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                 </svg>
-               </div>
-             ) : shiftsData.length === 0 ? (
-               <div className="p-6 text-center text-gray-500">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                 </svg>
-                 <p>No shifts data available.</p>
-               </div>
-             ) : (
-               <div className="overflow-x-auto">
-                 <table className="min-w-full divide-y divide-gray-200">
-                   <thead className="bg-gray-50">
-                     <tr>
-                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff</th>
-                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
-                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
-                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                     </tr>
-                   </thead>
-                   <tbody className="bg-white divide-y divide-gray-200">
-                     {shiftsData.map((shift) => (
-                       <tr key={shift.id} className="hover:bg-gray-50">
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <div className="text-sm text-gray-900">{shift.users?.name || 'Unknown'}</div>
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <div className="text-sm text-gray-900">{formatDateTime12Hour(shift.start_time)}</div>
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <div className="text-sm text-gray-900">{formatDateTime12Hour(shift.end_time)}</div>
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                             shift.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                             shift.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
-                             shift.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
-                             'bg-gray-100 text-gray-800'
-                           }`}>
-                             {shift.status ? shift.status.replace('_', ' ') : 'N/A'}
-                           </span>
-                         </td>
-                         <td className="px-6 py-4 whitespace-normal">
-                           <div className="text-sm text-gray-500 max-w-xs truncate">{shift.notes || 'No notes'}</div>
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-             )}
-           </div>
-         )}
-       </div>
-     </main>
-   </div>
- );
+        </div>
+      )}
+    </div>
+  );
 }

@@ -1,7 +1,7 @@
-// StartEndShiftComponent.js
+"use client";
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Coffee } from 'lucide-react/dist/cjs/lucide-react';
+import { Play, Square, FileText, CheckCircle, AlertCircle, X, ChevronRight, Clock, Loader2, Zap, Circle, Activity } from 'lucide-react';
 
 const StartEndShiftComponent = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -10,11 +10,25 @@ const StartEndShiftComponent = () => {
     const [successMessage, setSuccessMessage] = useState(null);
     const [showEndShiftModal, setShowEndShiftModal] = useState(false);
     const [workNotes, setWorkNotes] = useState('');
+    const [elapsedTime, setElapsedTime] = useState('00:00:00');
 
-    // Fetch active shift on component mount
     useEffect(() => {
         fetchCurrentShift();
     }, []);
+
+    useEffect(() => {
+        if (!activeShift) return;
+        const intervalId = setInterval(() => {
+            const start = new Date(activeShift.start_time);
+            const now = new Date();
+            const diff = now - start;
+            const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+            const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+            const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            setElapsedTime(`${h}:${m}:${s}`);
+        }, 1000);
+        return () => clearInterval(intervalId);
+    }, [activeShift]);
 
     const fetchCurrentShift = async () => {
         try {
@@ -22,183 +36,169 @@ const StartEndShiftComponent = () => {
             setActiveShift(response.data.activeShift);
         } catch (err) {
             console.error('Error fetching current shift:', err);
-            setError(err.response?.data?.error || 'Failed to fetch current shift');
         }
     };
 
     const startShift = async () => {
         setIsLoading(true);
         setError(null);
-        setSuccessMessage(null);
-
         try {
             const response = await axios.post('/api/shifts/start');
             setActiveShift(response.data.shift);
-            setSuccessMessage('Shift started successfully!');
+            setSuccessMessage('Welcome back! Your shift has started.');
+            setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err) {
-            console.error('Error starting shift:', err);
             setError(err.response?.data?.error || 'Failed to start shift');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const openEndShiftModal = () => {
-        setShowEndShiftModal(true);
-        setError(null);
-    };
-
-    const closeEndShiftModal = () => {
-        setShowEndShiftModal(false);
-        setWorkNotes('');
-    };
-
     const endShift = async () => {
-        // Validate work notes
         if (!workNotes.trim()) {
-            setError('Please provide notes about the work you did during this shift');
+            setError('Please briefly describe what you did today.');
             return;
         }
-
         setIsLoading(true);
         setError(null);
-        setSuccessMessage(null);
-
         try {
-            const response = await axios.post('/api/shifts/end', {
-                notes: workNotes
-            });
-
+            await axios.post('/api/shifts/end', { notes: workNotes });
             setActiveShift(null);
-            setSuccessMessage('Shift ended successfully!');
             setShowEndShiftModal(false);
             setWorkNotes('');
+            setSuccessMessage('Shift completed. Great work today!');
+            setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err) {
-            console.error('Error ending shift:', err);
             setError(err.response?.data?.error || 'Failed to end shift');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const formatDateTime = (dateString) => {
-        return new Date(dateString).toLocaleString();
-    };
-
     return (
-        <div className="bg-white text-gray-800 p-4 rounded-lg shadow-sm border border-gray-200">
-            {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg flex items-center text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    {error}
+        <div className="flex flex-col h-full bg-white transition-all overflow-hidden relative group/parent">
+            {/* Header Area */}
+            <div className="p-6 pb-2 flex items-center justify-between z-10">
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                        <Clock size={16} className="text-slate-400" />
+                        <h3 className="text-sm font-semibold text-slate-950">Shift Control</h3>
+                    </div>
                 </div>
-            )}
-
-            {successMessage && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-lg flex items-center text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    {successMessage}
+                <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                    activeShift ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-500 border-slate-200'
+                }`}>
+                    <Circle size={6} className={activeShift ? 'fill-green-500 text-green-500' : 'fill-slate-300 text-slate-300'} />
+                    {activeShift ? 'Active Session' : 'No active session'}
                 </div>
-            )}
+            </div>
 
-            {activeShift ? (
-                <div>
-                    <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg mb-4">
-                        <div className="flex items-center mb-2">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-2"></div>
-                            <p className="font-medium text-blue-600">Active Shift</p>
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6 z-10">
+                {activeShift ? (
+                    <div className="text-center space-y-2 animate-in zoom-in duration-500 relative">
+                        {/* Background Glow */}
+                        <div className="absolute -inset-12 bg-green-500/5 blur-3xl rounded-full animate-pulse pointer-events-none"></div>
+                        
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none relative">Session Duration</p>
+                        <div className="text-6xl font-semibold text-slate-950 tabular-nums tracking-tighter drop-shadow-sm transition-all relative">
+                            {elapsedTime}
                         </div>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <p className="text-sm text-gray-500">Started</p>
-                                <p className="text-md font-medium">{formatDateTime ? formatDateTime(activeShift.start_time) : "10:30 AM"}</p>
-                            </div>
-                            <div className="bg-blue-100 p-2 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
+                        <p className="text-xs font-medium text-slate-500 pt-2 flex items-center justify-center gap-1.5 relative">
+                            <Activity size={12} className="text-green-500 animate-pulse" />
+                            Started at {new Date(activeShift.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="text-center space-y-5 animate-in fade-in duration-500">
+                        <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center mx-auto text-slate-300">
+                           <Clock size={24} />
+                        </div>
+                        <div className="space-y-1">
+                            <h4 className="text-base font-semibold text-slate-950">Ready to start?</h4>
+                            <p className="text-sm text-slate-500 max-w-[240px] mx-auto">Start your shift to begin recording your work metrics and productivity data.</p>
                         </div>
                     </div>
-                    <button
-                        onClick={openEndShiftModal}
-                        disabled={isLoading}
-                        className="mt-2 bg-white text-gray-700 border border-gray-300 py-2 px-4 w-full rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 font-medium hover:bg-gray-50"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
-                        </svg>
-                        {isLoading ? 'Ending...' : 'End Shift'}
-                    </button>
-                </div>
-            ) : (
+                )}
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="p-6 pt-2 z-10">
                 <button
-                    onClick={startShift}
+                    onClick={activeShift ? () => setShowEndShiftModal(true) : startShift}
                     disabled={isLoading}
-                    className="bg-blue-500 text-white w-full py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 font-medium hover:bg-blue-600"
+                    className={`w-full h-11 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm ${
+                        activeShift 
+                            ? 'bg-slate-950 text-white hover:bg-slate-900 border-transparent' 
+                            : 'bg-white text-slate-950 border border-slate-200 hover:bg-slate-50'
+                    }`}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                    {isLoading ? 'Starting...' : 'Start Shift'}
+                    {isLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                        activeShift ? (
+                            <>
+                                <Square className="fill-white" size={14} />
+                                <span>End Shift</span>
+                            </>
+                        ) : (
+                            <>
+                                <Play className="fill-slate-950" size={14} />
+                                <span>Begin Shift</span>
+                            </>
+                        )
+                    )}
                 </button>
+            </div>
+
+            {/* Error/Success Feedbacks */}
+            {(error || successMessage) && (
+                <div className="px-6 pb-4 z-10">
+                   <div className={`p-2.5 rounded-md flex items-center gap-3 border text-xs font-semibold animate-in slide-in-from-bottom-2 duration-300 ${
+                      error ? 'bg-red-50 border-red-100 text-red-600' : 'bg-green-50 border-green-100 text-green-700'
+                   }`}>
+                      {error ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
+                      <span>{error || successMessage}</span>
+                      <button onClick={() => {setError(null); setSuccessMessage(null);}} className="ml-auto opacity-50 hover:opacity-100">
+                         <X size={14} />
+                      </button>
+                   </div>
+                </div>
             )}
 
-            {/* End Shift Modal */}
+            {/* End Shift Review Modal */}
             {showEndShiftModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-4 w-full max-w-md mx-4 shadow-lg">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-lg font-medium text-gray-800">End Shift</h3>
-                            <button
-                                onClick={closeEndShiftModal}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                </svg>
-                            </button>
-                        </div>
+                <div className="fixed inset-0 bg-slate-950/20 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-xl p-8 w-full max-w-sm mx-auto shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200">
+                        <header className="space-y-2 mb-6">
+                            <h3 className="text-lg font-semibold text-slate-950">Confirm sign off</h3>
+                            <p className="text-sm text-slate-500">Briefly summarize your accomplishments before completing your shift.</p>
+                        </header>
 
-                        <p className="mb-4 text-gray-500 text-sm">Please provide details about the work you did during this shift.</p>
-
-                        <div className="mb-3">
-                            <label htmlFor="workNotes" className="block mb-1 text-sm font-medium text-gray-700">Work Notes</label>
+                        <div>
                             <textarea
-                                id="workNotes"
                                 value={workNotes}
                                 onChange={(e) => setWorkNotes(e.target.value)}
-                                placeholder="Describe tasks completed, achievements, challenges faced, etc."
-                                className="w-full h-24 p-2 border rounded-lg bg-white border-gray-300 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400 text-sm"
+                                placeholder="Describe what you worked on..."
+                                className="w-full h-32 p-4 rounded-lg bg-slate-50 border border-slate-200 focus:border-slate-400 text-sm font-medium placeholder:text-slate-400 outline-none resize-none transition-all"
                                 required
-                            ></textarea>
-
-                            {error && error.includes('notes') && (
-                                <p className="mt-1 text-xs text-red-500">{error}</p>
-                            )}
+                            />
                         </div>
 
-                        <div className="flex gap-2 mt-4">
+                        <div className="grid grid-cols-2 gap-3 mt-8">
                             <button
-                                onClick={endShift}
-                                className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-1 font-medium text-sm flex-1"
-                                disabled={isLoading}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                                {isLoading ? 'Processing...' : 'End Shift'}
-                            </button>
-                            <button
-                                onClick={closeEndShiftModal}
-                                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700 text-sm"
+                                onClick={() => setShowEndShiftModal(false)}
+                                className="h-10 rounded-lg text-sm font-semibold border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
                                 disabled={isLoading}
                             >
                                 Cancel
+                            </button>
+                            <button
+                                onClick={endShift}
+                                className="h-10 rounded-lg text-sm font-semibold bg-slate-950 text-white hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? <Loader2 size={16} className="animate-spin" /> : <span>Sign off</span>}
                             </button>
                         </div>
                     </div>

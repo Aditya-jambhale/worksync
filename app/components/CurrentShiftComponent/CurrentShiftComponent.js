@@ -1,37 +1,21 @@
-// CurrentShiftComponent.js
-'use client'
+"use client"
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Timer, Activity, Hash, ArrowUpRight, Copy, Check, Loader2, Zap, Circle, MoveUpRight, ZapOff , Calendar} from 'lucide-react';
 
-const CurrentShiftComponent = () => {
+const CurrentShiftComponent = ({ setActiveTab }) => {
     const [activeShift, setActiveShift] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [elapsedTime, setElapsedTime] = useState('00:00:00');
+    const [copied, setCopied] = useState(false);
+
+    const [activityData, setActivityData] = useState([]);
 
     useEffect(() => {
         fetchCurrentShift();
+        fetchActivityData();
     }, []);
-
-    // Update elapsed time every second if there's an active shift
-    useEffect(() => {
-        if (!activeShift) return;
-
-        const intervalId = setInterval(() => {
-            const startTime = new Date(activeShift.start_time);
-            const currentTime = new Date();
-            const diffMs = currentTime - startTime;
-
-            // Format as HH:MM:SS
-            const hours = Math.floor(diffMs / 3600000).toString().padStart(2, '0');
-            const minutes = Math.floor((diffMs % 3600000) / 60000).toString().padStart(2, '0');
-            const seconds = Math.floor((diffMs % 60000) / 1000).toString().padStart(2, '0');
-
-            setElapsedTime(`${hours}:${minutes}:${seconds}`);
-        }, 1000);
-
-        return () => clearInterval(intervalId);
-    }, [activeShift]);
 
     const fetchCurrentShift = async () => {
         setIsLoading(true);
@@ -39,94 +23,139 @@ const CurrentShiftComponent = () => {
             const response = await axios.get('/api/shifts/current');
             setActiveShift(response.data.activeShift);
         } catch (err) {
-            console.error('Error fetching current shift:', err);
             setError(err.response?.data?.error || 'Failed to fetch current shift');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const formatDateTime = (dateString) => {
-        return new Date(dateString).toLocaleString();
+    const fetchActivityData = async () => {
+        try {
+            const response = await axios.get('/api/shifts/history?limit=100');
+            setActivityData(response.data.shifts || []);
+        } catch (err) {
+            console.error('Activity Error:', err);
+        }
     };
 
-    if (isLoading) {
-        return (
-            <div className="p-4 bg-white rounded-lg shadow-md">
-                <p>Loading current shift information...</p>
-            </div>
-        );
-    }
+    const getActivityLevel = (date) => {
+        const dateStr = date.toISOString().split('T')[0];
+        const dayShifts = activityData.filter(s => s.start_time.startsWith(dateStr));
+        if (dayShifts.length === 0) return 'bg-slate-50 border-slate-100';
+        
+        let totalMs = 0;
+        dayShifts.forEach(s => {
+           if (s.end_time) {
+             totalMs += (new Date(s.end_time) - new Date(s.start_time));
+           } else {
+             totalMs += (new Date() - new Date(s.start_time));
+           }
+        });
+        
+        const hours = totalMs / 3600000;
+        if (hours < 2) return 'bg-emerald-100 border-emerald-200';
+        if (hours < 5) return 'bg-emerald-300 border-emerald-400';
+        if (hours < 8) return 'bg-emerald-500 border-emerald-600';
+        return 'bg-emerald-700 border-emerald-800 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+    };
 
-    if (error) {
+    const renderActivityGrid = () => {
+        const today = new Date();
+        const days = [];
+        // Show last 18 weeks (about 4 months)
+        for (let i = 126; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            days.push(d);
+        }
+
         return (
-            <div className="p-4 bg-white rounded-lg shadow-md">
-                <p className="text-red-500">Error: {error}</p>
+            <div className="grid grid-flow-col grid-rows-7 gap-1.5 w-fit mx-auto">
+                {days.map((day, i) => (
+                    <div 
+                        key={i} 
+                        title={`${day.toLocaleDateString()}`}
+                        className={`w-3 h-3 rounded-[2px] border transition-all hover:scale-125 cursor-crosshair ${getActivityLevel(day)}`}
+                    ></div>
+                ))}
             </div>
         );
-    }
+    };
+
+    const copyId = () => {
+        navigator.clipboard.writeText(activeShift.id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     return (
-        <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center">
-                    <h3 className="text-base font-medium text-gray-700">Shift Stats</h3>
-                    <div className="h-px flex-grow bg-gradient-to-r from-blue-200 to-transparent ml-3"></div>
-                </div>
-
-                {activeShift && (
-                    <div className="flex items-center">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
-                        <span className="text-xs font-medium text-green-600">LIVE</span>
+        <div className="flex flex-col h-full bg-white transition-all group selection:bg-indigo-100 min-h-[440px]">
+            {/* Header */}
+            <div className="p-6 pb-4 flex items-center justify-between border-b border-slate-50 bg-slate-50/10">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-slate-950 text-white shadow-lg shadow-slate-200">
+                        <Calendar size={16} />
                     </div>
-                )}
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-900 tracking-tight">Active Pulse</h3>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest leading-none mt-1">Shift Activity Grid</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                   <Zap size={10} className="fill-slate-400 text-slate-400" />
+                   Core Synced
+                </div>
             </div>
 
-            {activeShift ? (
-                <div className="space-y-3">
-                    <div className="grid grid-cols-1 gap-3">
-                        <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
-                            <p className="text-xs text-gray-500 mb-1">Status</p>
-                            <div className="flex items-center">
-                                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                <span className="text-green-600 font-medium">Active</span>
-                            </div>
-                        </div>
+            {/* Main Insights Panel - Activity Grid */}
+            <div className="flex-1 p-8 flex flex-col justify-center space-y-8 min-h-[300px]">
+                <header className="text-center space-y-1">
+                   <h4 className="text-base font-semibold text-slate-950">Shift Momentum</h4>
+                   <p className="text-xs text-slate-500 max-w-[280px] mx-auto">Visualization of operational engagement over the last 18 weeks.</p>
+                </header>
 
-                        <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
-                            <p className="text-xs text-gray-500 mb-1">Started</p>
-                            <p className="text-gray-700 font-medium">{formatDateTime ? formatDateTime(activeShift.start_time) : "10:30 AM"}</p>
-                        </div>
-
-                        <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
-                            <p className="text-xs text-gray-500 mb-1">Shift ID</p>
-                            <div className="flex items-center justify-between">
-                                <p className="text-gray-700 font-mono text-sm">{activeShift.id || "SH-7842-45A"}</p>
-                                <button className="text-blue-500 hover:text-blue-600 transition-colors text-xs">
-                                    Copy
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="relative p-3 bg-white rounded-lg border border-blue-200">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-500 rounded-t-lg"></div>
-                        <p className="text-sm text-gray-500 mb-1 mt-1">Elapsed Time</p>
-                        <div className="flex items-center justify-center">
-                            <p className="text-2xl font-mono text-gray-800">{elapsedTime || "03:27:42"}</p>
-                        </div>
-                    </div>
+                <div className="relative p-6 bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden group/grid">
+                   <div className="absolute inset-0 bg-[radial-gradient(#f1f5f9_1px,transparent_1px)] [background-size:20px_20px] opacity-40"></div>
+                   <div className="relative z-10 overflow-x-auto no-scrollbar py-2">
+                       {renderActivityGrid()}
+                   </div>
+                   
+                   <div className="flex items-center justify-between mt-6 px-1">
+                      <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                         <span>Less</span>
+                         <div className="flex gap-1">
+                            <div className="w-2 h-2 rounded-sm bg-slate-50 border border-slate-100"></div>
+                            <div className="w-2 h-2 rounded-sm bg-emerald-100"></div>
+                            <div className="w-2 h-2 rounded-sm bg-emerald-300"></div>
+                            <div className="w-2 h-2 rounded-sm bg-emerald-500"></div>
+                            <div className="w-2 h-2 rounded-sm bg-emerald-700"></div>
+                         </div>
+                         <span>More</span>
+                      </div>
+                      <span className="text-[10px] font-black text-slate-950 uppercase tracking-tighter">Rolling 126 Day Matrix</span>
+                   </div>
                 </div>
-            ) : (
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <p className="text-gray-500 text-sm">No active shift at this time.</p>
-                </div>
-            )}
+            </div>
+
+            {/* Footer Summary Bar */}
+            <footer className="p-6 pt-0 border-t border-slate-50 mt-auto bg-slate-50/20">
+               <div className="flex items-center justify-between py-6">
+                  <div className="space-y-1">
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.25em]">Session Density</p>
+                     <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+                        <Activity size={14} className="text-emerald-500" />
+                        {activityData.length} Completed Cycles
+                     </div>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('analytics')}
+                    className="flex items-center gap-2 h-9 px-4 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-600 uppercase tracking-widest hover:border-slate-950 transition-all active:scale-95 shadow-sm"
+                  >
+                     Review History
+                     <ArrowUpRight size={12} />
+                  </button>
+               </div>
+            </footer>
         </div>
     );
 };
