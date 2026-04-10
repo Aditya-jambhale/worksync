@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import Cookies from 'js-cookie';
+import { toast } from 'react-hot-toast';
 import { Timer, Activity, Hash, ArrowUpRight, Copy, Check, Loader2, Zap, Circle, MoveUpRight, ZapOff , Calendar} from 'lucide-react';
 
 const CurrentShiftComponent = ({ setActiveTab }) => {
@@ -20,10 +21,17 @@ const CurrentShiftComponent = ({ setActiveTab }) => {
     const fetchCurrentShift = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get('/api/shifts/current');
-            setActiveShift(response.data.activeShift);
+            const token = Cookies.get('user_session_token');
+            const response = await fetch('/api/shifts/current', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              setActiveShift(data.activeShift);
+            }
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to fetch current shift');
+            setError('Failed to fetch current shift');
+            toast.error('Failed to load active shift data');
         } finally {
             setIsLoading(false);
         }
@@ -31,8 +39,14 @@ const CurrentShiftComponent = ({ setActiveTab }) => {
 
     const fetchActivityData = async () => {
         try {
-            const response = await axios.get('/api/shifts/history?limit=100');
-            setActivityData(response.data.shifts || []);
+            const token = Cookies.get('user_session_token');
+            const response = await fetch('/api/shifts/history?limit=100', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              setActivityData(data.shifts || []);
+            }
         } catch (err) {
             console.error('Activity Error:', err);
         }

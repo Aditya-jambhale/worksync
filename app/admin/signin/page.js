@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ShieldCheck, ArrowLeft, Key, Mail, Lock, Loader2 } from 'lucide-react';
 
+import { toast } from 'react-hot-toast';
+
 export default function AdminSigninPage() {
     const router = useRouter();
     const [formData, setFormData] = useState({
@@ -27,6 +29,7 @@ export default function AdminSigninPage() {
         }
         setLoading(true);
         setError('');
+        const loadToast = toast.loading('Authenticating admin...');
         try {
             const response = await fetch('/api/admin/signin', {
                 method: 'POST',
@@ -35,9 +38,11 @@ export default function AdminSigninPage() {
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Invalid admin credentials');
+            toast.success('Admin access granted', { id: loadToast });
             router.push('/admin/main');
         } catch (err) {
             setError(err.message);
+            toast.error(err.message, { id: loadToast });
         } finally {
             setLoading(false);
         }
@@ -50,7 +55,7 @@ export default function AdminSigninPage() {
 
             <div className="w-full max-w-[400px] relative z-10 space-y-8">
                 <button 
-                  onClick={() => router.push('/user')}
+                  onClick={() => router.push('/user/signin')}
                   className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-300 transition-colors text-[10px] font-black uppercase tracking-[0.2em]"
                 >
                   <ArrowLeft size={14} />

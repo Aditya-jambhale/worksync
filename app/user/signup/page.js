@@ -187,7 +187,7 @@ export default function SignupPage() {
 
                     <div className="text-center pt-2">
                        <p className="text-xs font-medium text-slate-500">
-                          Already registered? <Link href="/user" className="text-indigo-600 font-bold hover:underline">Sign in</Link>
+                          Already registered? <Link href="/user/signin" className="text-indigo-600 font-bold hover:underline">Sign in</Link>
                        </p>
                     </div>
                 </div>

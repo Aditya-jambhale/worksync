@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import Cookies from 'js-cookie';
+import { toast } from 'react-hot-toast';
 import { Clock, Calendar, ChevronLeft, ChevronRight, Filter, AlertCircle, Loader2, Download, Search, FileDown } from 'lucide-react';
 
 const ShiftHistoryComponent = () => {
@@ -18,13 +19,26 @@ const ShiftHistoryComponent = () => {
     setIsLoading(true);
     setError(null);
     try {
+      const token = Cookies.get('user_session_token');
       const queryParams = new URLSearchParams({ page: pagination.page, limit: pagination.limit });
       if (statusFilter) queryParams.append('status', statusFilter);
-      const response = await axios.get(`/api/shifts/history?${queryParams.toString()}`);
-      setShifts(response.data.shifts);
-      setPagination({ ...pagination, count: response.data.count });
+      
+      const response = await fetch(`/api/shifts/history?${queryParams.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Session expired');
+        }
+        throw new Error('Failed to fetch shift history');
+      }
+      
+      const data = await response.json();
+      setShifts(data.shifts);
+      setPagination({ ...pagination, count: data.count });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to fetch shift history');
+      setError(err.message || 'Failed to fetch shift history');
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +108,7 @@ const ShiftHistoryComponent = () => {
              <h3 className="text-base font-semibold text-slate-950">No shift history</h3>
              <p className="text-sm text-slate-500 max-w-xs mx-auto">You haven't recorded any shift sessions yet. Start your first shift to see history here.</p>
           </div>
-          <button className="btn-primary">Begin First Shift</button>
+          <button className="bg-slate-950 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-900 transition-all">Begin First Shift</button>
         </div>
       ) : (
         <div className="p-0">

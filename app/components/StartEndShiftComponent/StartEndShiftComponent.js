@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import Cookies from 'js-cookie';
+import { toast } from 'react-hot-toast';
 import { Play, Square, FileText, CheckCircle, AlertCircle, X, ChevronRight, Clock, Loader2, Zap, Circle, Activity } from 'lucide-react';
 
 const StartEndShiftComponent = () => {
@@ -32,8 +33,14 @@ const StartEndShiftComponent = () => {
 
     const fetchCurrentShift = async () => {
         try {
-            const response = await axios.get('/api/shifts/current');
-            setActiveShift(response.data.activeShift);
+            const token = Cookies.get('user_session_token');
+            const response = await fetch('/api/shifts/current', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              setActiveShift(data.activeShift);
+            }
         } catch (err) {
             console.error('Error fetching current shift:', err);
         }
@@ -42,13 +49,24 @@ const StartEndShiftComponent = () => {
     const startShift = async () => {
         setIsLoading(true);
         setError(null);
+        const loadToast = toast.loading('Starting shift...');
         try {
-            const response = await axios.post('/api/shifts/start');
-            setActiveShift(response.data.shift);
-            setSuccessMessage('Welcome back! Your shift has started.');
-            setTimeout(() => setSuccessMessage(null), 3000);
+            const token = Cookies.get('user_session_token');
+            const response = await fetch('/api/shifts/start', {
+                method: 'POST',
+                headers: { 
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to start shift');
+            
+            setActiveShift(data.shift);
+            toast.success('Welcome back! Your shift has started.', { id: loadToast });
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to start shift');
+            setError(err.message);
+            toast.error(err.message, { id: loadToast });
         } finally {
             setIsLoading(false);
         }
@@ -56,20 +74,32 @@ const StartEndShiftComponent = () => {
 
     const endShift = async () => {
         if (!workNotes.trim()) {
-            setError('Please briefly describe what you did today.');
+            toast.error('Please briefly describe what you did today.');
             return;
         }
         setIsLoading(true);
         setError(null);
+        const loadToast = toast.loading('Ending shift...');
         try {
-            await axios.post('/api/shifts/end', { notes: workNotes });
+            const token = Cookies.get('user_session_token');
+            const response = await fetch('/api/shifts/end', {
+                method: 'POST',
+                headers: { 
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notes: workNotes })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to end shift');
+
             setActiveShift(null);
             setShowEndShiftModal(false);
             setWorkNotes('');
-            setSuccessMessage('Shift completed. Great work today!');
-            setTimeout(() => setSuccessMessage(null), 3000);
+            toast.success('Shift completed. Great work today!', { id: loadToast });
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to end shift');
+            setError(err.message);
+            toast.error(err.message, { id: loadToast });
         } finally {
             setIsLoading(false);
         }

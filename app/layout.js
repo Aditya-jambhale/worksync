@@ -15,10 +15,13 @@ const geistMono = Geist_Mono({
 export const metadata = projectMetadata;
 export const viewport = projectViewport;
 
+import { Toaster } from 'react-hot-toast';
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Toaster position="top-right" />
         {children}
       </body>
     </html>
