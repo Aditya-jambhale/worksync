@@ -21,14 +21,9 @@ export function proxy(request) {
         }
     }
 
-    // PROTECT USER: for the user landing page ("/"), require user_session_token
+    // ALLOW access to the root landing page ("/")
     if (pathname === "/") {
-        const userCookie = request.cookies.get("user_session_token");
-        if (!userCookie) {
-            const url = request.nextUrl.clone();
-            url.pathname = "/user"; // e.g. public sign in page for users
-            return NextResponse.redirect(url);
-        }
+        return NextResponse.next();
     }
 
     return NextResponse.next();

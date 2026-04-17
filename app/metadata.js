@@ -1,13 +1,13 @@
 export const metadata = {
     title: {
-      default: "WorkSync | The Modern Workforce Operating System",
+      default: "WorkSync | Execution Tracking for Startups",
       template: "%s | WorkSync"
     },
-    description: "Enterprise-grade work tracking, shift management, and performance analytics. Designed for high-performance teams. WorkSync is the modern operating system for the distributed workforce.",
+    description: "Lightweight team activity and execution tracking system for early-stage startups. Know what your team actually did today without meetings.",
     applicationName: "WorkSync",
-    authors: [{ name: "WorkSync Engineering", url: "https://worksync.core" }],
+    authors: [{ name: "WorkSync Team", url: "https://worksync.io" }],
     generator: "Next.js",
-    keywords: ["workforce management", "shift tracking", "productivity analytics", "employee portal", "SaaS dashboard", "work tracking", "linear alternative", "stripe for work"],
+    keywords: ["startup execution", "team activity tracking", "founder dashboard", "task visibility", "work tracking", "startup transparency", "remote team tracking"],
     referrer: "origin-when-cross-origin",
     creator: "WorkSync Core Team",
     publisher: "WorkSync",
@@ -16,7 +16,7 @@ export const metadata = {
       address: false,
       telephone: false,
     },
-    metadataBase: new URL("https://worksync.core"),
+    metadataBase: new URL("https://worksync.io"),
     alternates: {
       canonical: "/",
       languages: {
