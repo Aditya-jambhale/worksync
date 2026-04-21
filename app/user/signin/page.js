@@ -23,10 +23,13 @@ export default function SigninPage() {
     // Handle hash-based OAuth (Implicit Flow) fallback
     useEffect(() => {
         const checkSession = async () => {
-            // Log for debugging
             if (window.location.hash && window.location.hash.includes('access_token')) {
                 console.log('Detected OAuth hash, synchronizing session...');
                 setLoading(true);
+                
+                // 1. Immediately wipe the hash to keep the URL clean
+                const cleanupUrl = window.location.pathname + window.location.search;
+                window.history.replaceState({}, document.title, cleanupUrl);
                 
                 // Small delay to ensure Supabase client is ready
                 await new Promise(resolve => setTimeout(resolve, 500));
