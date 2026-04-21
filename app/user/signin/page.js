@@ -3,9 +3,13 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import Cookies from 'js-cookie';
+import { v4 as uuidv4 } from 'uuid';
 import { Loader2, Mail, Lock, ShieldCheck, ChevronRight } from 'lucide-react';
-
 import { toast } from 'react-hot-toast';
+import SocialAuth from '@/app/components/SocialAuth';
+import supabase from '@/app/DB/dbConnect';
+import { useEffect } from 'react';
 
 export default function SigninPage() {
     const router = useRouter();
@@ -15,6 +19,78 @@ export default function SigninPage() {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Handle hash-based OAuth (Implicit Flow) fallback
+    useEffect(() => {
+        const checkSession = async () => {
+            // Log for debugging
+            if (window.location.hash && window.location.hash.includes('access_token')) {
+                console.log('Detected OAuth hash, synchronizing session...');
+                setLoading(true);
+                
+                // Small delay to ensure Supabase client is ready
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                try {
+                    const { data: { session }, error } = await supabase.auth.getSession();
+                    if (session) {
+                        console.log('Session synchronized successfully!');
+                        
+                        // 1. Fetch user detail to get internal userId
+                        let { data: userData } = await supabase
+                            .from('users')
+                            .select('userId')
+                            .eq('email', session.user.email)
+                            .single();
+                            
+                        const avatarUrl = session.user.user_metadata.avatar_url || session.user.user_metadata.picture;
+                        const fullName = session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email.split('@')[0];
+                        let finalUserId = userData?.userId;
+
+                        // 2. Sync Social Info
+                        if (userData) {
+                            // UPDATE existing user with latest info
+                            await supabase.from('users')
+                                .update({ name: fullName, avatar_url: avatarUrl })
+                                .eq('email', session.user.email);
+                        } else {
+                            // INSERT new social user
+                            finalUserId = uuidv4();
+                            await supabase.from('users').insert([{
+                                userId: finalUserId,
+                                name: fullName,
+                                email: session.user.email,
+                                password: 'social_auth_user',
+                                role: 'Intern',
+                                avatar_url: avatarUrl
+                            }]);
+                        }
+                            
+                        // 3. Prepare legacy session data
+                        const sessionData = JSON.stringify({ 
+                            token: uuidv4(), 
+                            userId: finalUserId, 
+                            role: "user" 
+                        });
+                        
+                        // 3. Set the cookie so the Dashboard and APIs work
+                        Cookies.set('user_session_token', sessionData, { expires: 7 });
+
+                        toast.success('Social Login Successful!', { icon: '🔑' });
+                        router.push('/user/Dashboard');
+                    } else if (error) {
+                        console.error('Auth error from hash:', error.message);
+                        setError('Social login synchronization failed. Please try again.');
+                    }
+                } catch (err) {
+                    console.error('Fatal hash auth error:', err);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        checkSession();
+    }, [router]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -147,6 +223,8 @@ export default function SigninPage() {
                             )}
                         </button>
                     </form>
+
+                    <SocialAuth />
 
                     <div className="relative py-2">
                         <div className="absolute inset-0 flex items-center">

@@ -188,9 +188,13 @@ export default function UserNavigation({ children }) {
               <span className={`transition-opacity duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:w-0' : 'opacity-100'}`}>Log out</span>
            </button>
            <div className={`mt-4 p-3 bg-slate-50 rounded-xl flex items-center gap-3 transition-all duration-300 ${sidebarCollapsed ? 'md:opacity-0 md:overflow-hidden' : 'opacity-100'}`}>
-              <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center text-white font-bold text-xs shrink-0">
-                 {user?.name?.charAt(0)}
-              </div>
+               <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+                  {user?.avatar_url ? (
+                     <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                     user?.name?.charAt(0)
+                  )}
+               </div>
               <div className="flex-1 min-w-0">
                  <p className="text-xs font-semibold truncate text-slate-950">{user?.name}</p>
                  <p className="text-[10px] text-slate-500 font-medium truncate italic">{user?.email}</p>
@@ -230,10 +234,16 @@ export default function UserNavigation({ children }) {
                  <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white"></div>
               </button>
               <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-              <div className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded-lg transition-all cursor-pointer">
-                 <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold">{user?.name?.substring(0, 2).toUpperCase()}</div>
-                 <ChevronDown size={14} className="text-slate-400" />
-              </div>
+               <div className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded-lg transition-all cursor-pointer">
+                  <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold overflow-hidden border border-slate-200">
+                     {user?.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                     ) : (
+                        user?.name?.substring(0, 2).toUpperCase()
+                     )}
+                  </div>
+                  <ChevronDown size={14} className="text-slate-400" />
+               </div>
            </div>
         </header>
 

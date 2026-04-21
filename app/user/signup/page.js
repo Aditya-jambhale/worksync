@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Loader2, Mail, Lock, User, ShieldCheck, ChevronRight, Briefcase } from 'lucide-react';
+import SocialAuth from '@/app/components/SocialAuth';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -184,6 +185,8 @@ export default function SignupPage() {
                             )}
                         </button>
                     </form>
+
+                    <SocialAuth />
 
                     <div className="text-center pt-2">
                        <p className="text-xs font-medium text-slate-500">

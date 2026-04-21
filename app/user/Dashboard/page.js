@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Cookies from 'js-cookie';
 import { toast } from 'react-hot-toast';
 import UserNavigation from '../lib/navigation';
@@ -11,6 +11,31 @@ export default function DashboardPage() {
   const [totalHours, setTotalHours] = useState(0);
   const [activeDuration, setActiveDuration] = useState('00:00:00');
   const [tasks, setTasks] = useState([]);
+  const hasShownToast = useRef(false);
+
+  // Handle OAuth Success Toast
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('login') === 'success' && !hasShownToast.current) {
+      toast.success('Successfully logged in with Social ID!', {
+        icon: '🚀',
+        duration: 4000,
+        style: {
+          borderRadius: '12px',
+          background: '#0f172a',
+          color: '#fff',
+          fontSize: '12px',
+          fontWeight: '700',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em'
+        },
+      });
+      hasShownToast.current = true;
+      
+      // Clean up URL without refreshing the page
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
      const fetchOperationalStats = async () => {
