@@ -69,12 +69,15 @@ export default function SigninPage() {
                         // 3. Prepare legacy session data
                         const sessionData = JSON.stringify({ 
                             token: uuidv4(), 
-                            userId: finalUserId, 
+                            userId: finalUserId || session.user.id, 
                             role: "user" 
                         });
                         
-                        // 3. Set the cookie so the Dashboard and APIs work
+                        // 4. Set the cookie so the Dashboard and APIs work
                         Cookies.set('user_session_token', sessionData, { expires: 7 });
+
+                        // 5. CLEAR THE URL (Wipe hash and params to prevent loops)
+                        window.history.replaceState({}, document.title, window.location.pathname);
 
                         toast.success('Social Login Successful!', { icon: '🔑' });
                         router.push('/user/Dashboard');
