@@ -10,6 +10,7 @@ import {
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 import Footer from '../../components/Footer/Footer.js';
+import supabase from '@/app/DB/dbConnect';
 
 export default function UserNavigation({ children }) {
   const router = useRouter();
@@ -64,7 +65,12 @@ export default function UserNavigation({ children }) {
   const confirmLogout = async () => {
     const loadToast = toast.loading('Signing out...');
     try {
+      // 1. Clear the custom app session
       await fetch('/api/users/signout', { method: 'POST' });
+      
+      // 2. Clear the Supabase social session
+      await supabase.auth.signOut();
+
       toast.success('Logged out successfully', { id: loadToast });
       router.push('/user/signin');
     } catch (err) {
