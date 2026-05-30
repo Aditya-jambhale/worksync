@@ -16,6 +16,7 @@ export default function SigninPage() {
     const [formData, setFormData] = useState({
         email: '',
         password: '',
+        confirmPassword:''
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -117,12 +118,18 @@ export default function SigninPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
             });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || `Server error: ${response.status}`);
+            }
+            
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Invalid credentials');
             toast.success('Welcome back!');
             router.push('/user/Dashboard');
         } catch (err) {
-            setError(err.message);
+            console.error('Signin error:', err);
+            setError(err.message || 'Failed to sign in. Please try again.');
         } finally {
             setLoading(false);
         }

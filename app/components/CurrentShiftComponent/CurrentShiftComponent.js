@@ -1,10 +1,12 @@
 "use client"
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { toast } from 'react-hot-toast';
 import { Timer, Activity, Hash, ArrowUpRight, Copy, Check, Loader2, Zap, Circle, MoveUpRight, ZapOff , Calendar} from 'lucide-react';
 
-const CurrentShiftComponent = ({ setActiveTab }) => {
+const CurrentShiftComponent = () => {
+    const router = useRouter();
     const [activeShift, setActiveShift] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -162,7 +164,7 @@ const CurrentShiftComponent = ({ setActiveTab }) => {
                      </div>
                   </div>
                   <button 
-                    onClick={() => setActiveTab('analytics')}
+                    onClick={() => router.push('/user/shiftlogs')}
                     className="flex items-center gap-2 h-9 px-4 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-600 uppercase tracking-widest hover:border-slate-950 transition-all active:scale-95 shadow-sm"
                   >
                      Review History

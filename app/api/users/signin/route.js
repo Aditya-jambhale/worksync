@@ -51,7 +51,7 @@ export async function POST(req) {
     } catch (err) {
         console.error('Signin error:', err);
         return NextResponse.json(
-            { error: 'Server error' },
+            { error: err.message || 'Server error' },
             { status: 500 }
         );
     }
