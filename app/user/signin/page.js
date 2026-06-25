@@ -28,10 +28,6 @@ export default function SigninPage() {
                 console.log('Detected OAuth hash, synchronizing session...');
                 setLoading(true);
                 
-                // 1. Immediately wipe the hash to keep the URL clean
-                const cleanupUrl = window.location.pathname + window.location.search;
-                window.history.replaceState({}, document.title, cleanupUrl);
-                
                 // Small delay to ensure Supabase client is ready
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
@@ -85,9 +81,13 @@ export default function SigninPage() {
 
                         toast.success('Social Login Successful!', { icon: '🔑' });
                         router.push('/user/Dashboard');
-                    } else if (error) {
-                        console.error('Auth error from hash:', error.message);
-                        setError('Social login synchronization failed. Please try again.');
+                    } else {
+                        // Clear the URL hash if getSession returned no session to prevent loops
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        if (error) {
+                            console.error('Auth error from hash:', error.message);
+                            setError('Social login synchronization failed. Please try again.');
+                        }
                     }
                 } catch (err) {
                     console.error('Fatal hash auth error:', err);
