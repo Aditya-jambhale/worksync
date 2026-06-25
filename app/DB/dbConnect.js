@@ -8,6 +8,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
     console.error('Required: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        flowType: 'implicit',
+    }
+});
 console.log('✓ Supabase client initialized');
 export default supabase;
